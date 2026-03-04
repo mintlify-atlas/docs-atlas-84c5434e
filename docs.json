@@ -83,7 +83,9 @@
               "api/bookmarks/update",
               "api/bookmarks/delete",
               "api/bookmarks/refetch",
-              "api/bookmarks/bulk-operations"
+              "api/bookmarks/bulk-operations",
+              "api/bookmarks/set-visibility",
+              "api/bookmarks/bulk-set-visibility"
             ]
           },
           {
@@ -92,7 +94,8 @@
               "api/groups/list",
               "api/groups/create",
               "api/groups/update",
-              "api/groups/delete"
+              "api/groups/delete",
+              "api/groups/set-visibility"
             ]
           },
           {
@@ -104,9 +107,16 @@
             ]
           },
           {
+            "group": "Public API",
+            "pages": [
+              "api/public/get-profile"
+            ]
+          },
+          {
             "group": "Extension API",
             "pages": [
               "api/extension/overview",
+              "api/extension/save",
               "api/extension/import",
               "api/extension/check"
             ]

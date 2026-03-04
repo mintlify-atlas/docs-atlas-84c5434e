@@ -1,0 +1,183 @@
+---
+title: Set group visibility
+description: Control whether a bookmark group is publicly visible on your profile
+---
+
+Set a group's visibility to public or private. Public groups appear on your public profile along with their bookmarks (subject to individual bookmark visibility settings).
+
+## Endpoint
+
+```typescript
+group.setVisibility
+```
+
+**Source**: `server/procedures/bookmarks.ts:196`
+
+## Input
+
+<ParamField path="id" type="string" required>
+  The ID of the group to update
+</ParamField>
+
+<ParamField path="isPublic" type="boolean" required>
+  Visibility setting:
+  - `true` - Make group public (visible on profile)
+  - `false` - Make group private (hidden from profile)
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  The group ID
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  The group name
+</ResponseField>
+
+<ResponseField name="color" type="string">
+  The group's color (hex format)
+</ResponseField>
+
+<ResponseField name="isPublic" type="boolean">
+  The updated visibility setting
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  The owner's user ID
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of creation
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp of last update
+</ResponseField>
+
+## Visibility behavior
+
+When a group is set to public:
+
+1. The group appears on your public profile (if profile is public)
+2. Bookmarks within the group are visible if:
+   - Bookmark `isPublic` is explicitly `true`, OR
+   - Bookmark `isPublic` is `null` (inherits from group)
+3. Bookmarks with explicit `isPublic: false` remain private
+
+When a group is set to private:
+
+1. The group is completely hidden from your public profile
+2. All bookmarks in the group are hidden, regardless of individual settings
+3. Only you can see the group and its bookmarks when logged in
+
+## Usage examples
+
+### React Query (client component)
+
+```typescript
+'use client';
+
+import { client } from '@/lib/orpc';
+
+function GroupVisibilityToggle({ groupId }: { groupId: string }) {
+  const { mutate, isPending } = client.group.setVisibility.useMutation();
+  
+  const handleTogglePublic = (isPublic: boolean) => {
+    mutate({
+      id: groupId,
+      isPublic,
+    });
+  };
+  
+  return (
+    <div>
+      <button onClick={() => handleTogglePublic(true)} disabled={isPending}>
+        Make public
+      </button>
+      <button onClick={() => handleTogglePublic(false)} disabled={isPending}>
+        Make private
+      </button>
+    </div>
+  );
+}
+```
+
+### Server component
+
+```typescript
+import { serverClient } from '@/lib/orpc.server';
+
+async function shareGroupPublicly(groupId: string) {
+  const group = await serverClient.group.setVisibility({
+    id: groupId,
+    isPublic: true,
+  });
+  
+  console.log(`Group "${group.name}" is now public`);
+  return group;
+}
+```
+
+### Direct client
+
+```typescript
+import { client } from '@/lib/orpc';
+
+// Make group public
+const group = await client.group.setVisibility.mutate({
+  id: 'group_id',
+  isPublic: true,
+});
+
+// Later, make it private again
+await client.group.setVisibility.mutate({
+  id: group.id,
+  isPublic: false,
+});
+```
+
+## Workflow: Publishing a curated collection
+
+```typescript
+import { client } from '@/lib/orpc';
+
+async function publishCollection(groupId: string) {
+  // Step 1: Get all bookmarks in the group
+  const bookmarks = await client.bookmark.list.query({ groupId });
+  
+  // Step 2: Make all bookmarks public (or null to inherit)
+  await client.bookmark.bulkSetVisibility.mutate({
+    ids: bookmarks.map(b => b.id),
+    isPublic: null, // Will inherit from group
+  });
+  
+  // Step 3: Make the group public
+  await client.group.setVisibility.mutate({
+    id: groupId,
+    isPublic: true,
+  });
+  
+  console.log('Collection published!');
+}
+```
+
+## Prerequisites
+
+Before making a group public, ensure:
+
+1. Your user profile is set to public (`isProfilePublic: true`)
+2. You have a username configured
+3. The group contains bookmarks you want to share
+
+<Warning>
+  Making a group public will expose all bookmarks in that group that have `isPublic: true` or `isPublic: null`. Review bookmark visibility before publishing.
+</Warning>
+
+## Related endpoints
+
+- [Get profile](/api/profile/get) - Check if your profile is public
+- [Update profile](/api/profile/update) - Set profile to public
+- [Set bookmark visibility](/api/bookmarks/set-visibility) - Control individual bookmark visibility
+- [Bulk set visibility](/api/bookmarks/bulk-set-visibility) - Update multiple bookmarks at once
+- [Public profile API](/api/public/get-profile) - View public profile data

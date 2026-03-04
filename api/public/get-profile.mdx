@@ -1,0 +1,278 @@
+---
+title: Get public profile
+description: Retrieve a user's public profile including their public groups and bookmarks
+---
+
+Fetch public profile data for any user by their username. This endpoint returns the user's profile information, public groups, and public bookmarks.
+
+## Endpoint
+
+```typescript
+public.getProfile
+```
+
+**Source**: `server/procedures/public.ts:6`
+
+## Input
+
+<ParamField path="username" type="string" required>
+  The username of the profile to retrieve
+</ParamField>
+
+## Response
+
+<ResponseField name="user" type="object">
+  <Expandable title="user properties">
+    <ResponseField name="name" type="string">
+      User's display name
+    </ResponseField>
+    
+    <ResponseField name="email" type="string">
+      User's email address
+    </ResponseField>
+    
+    <ResponseField name="username" type="string">
+      User's unique username
+    </ResponseField>
+    
+    <ResponseField name="bio" type="string | null">
+      User's bio text
+    </ResponseField>
+    
+    <ResponseField name="github" type="string | null">
+      GitHub profile URL
+    </ResponseField>
+    
+    <ResponseField name="twitter" type="string | null">
+      Twitter/X profile URL
+    </ResponseField>
+    
+    <ResponseField name="website" type="string | null">
+      Personal website URL
+    </ResponseField>
+    
+    <ResponseField name="image" type="string | null">
+      Profile image URL
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp of account creation
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="groups" type="array">
+  Array of public bookmark groups
+  
+  <Expandable title="group properties">
+    <ResponseField name="id" type="string">
+      Group ID
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Group name
+    </ResponseField>
+    
+    <ResponseField name="color" type="string">
+      Group color (hex format)
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp of creation
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="bookmarks" type="array">
+  Array of public bookmarks across all public groups
+  
+  <Expandable title="bookmark properties">
+    <ResponseField name="id" type="string">
+      Bookmark ID
+    </ResponseField>
+    
+    <ResponseField name="title" type="string">
+      Bookmark title
+    </ResponseField>
+    
+    <ResponseField name="url" type="string | null">
+      Bookmark URL (null for color/text bookmarks)
+    </ResponseField>
+    
+    <ResponseField name="favicon" type="string | null">
+      Favicon URL
+    </ResponseField>
+    
+    <ResponseField name="type" type="string">
+      Bookmark type: "link", "color", or "text"
+    </ResponseField>
+    
+    <ResponseField name="color" type="string | null">
+      Color value for color-type bookmarks
+    </ResponseField>
+    
+    <ResponseField name="groupId" type="string">
+      Parent group ID
+    </ResponseField>
+    
+    <ResponseField name="createdAt" type="string">
+      ISO 8601 timestamp of creation
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Errors
+
+<ResponseField name="NOT_FOUND" type="error">
+  Returned when:
+  - Username does not exist
+  - User's profile is not public (`isProfilePublic: false`)
+  - User has no public content
+</ResponseField>
+
+## Visibility rules
+
+A bookmark appears in the response only if:
+
+1. The parent group is public (`isPublic: true`)
+2. AND either:
+   - Bookmark is explicitly public (`isPublic: true`), OR
+   - Bookmark inherits visibility (`isPublic: null`)
+
+Bookmarks with explicit `isPublic: false` are never included, even if the group is public.
+
+## Usage examples
+
+### React Query (client component)
+
+```typescript
+'use client';
+
+import { client } from '@/lib/orpc';
+
+function PublicProfile({ username }: { username: string }) {
+  const { data, isLoading, error } = client.public.getProfile.useQuery({
+    username,
+  });
+  
+  if (isLoading) return <div>Loading profile...</div>;
+  if (error) return <div>Profile not found</div>;
+  
+  return (
+    <div>
+      <h1>{data.user.name}</h1>
+      <p>{data.user.bio}</p>
+      
+      <h2>Groups ({data.groups.length})</h2>
+      {data.groups.map(group => (
+        <div key={group.id}>
+          <h3>{group.name}</h3>
+          <p>Color: {group.color}</p>
+        </div>
+      ))}
+      
+      <h2>Bookmarks ({data.bookmarks.length})</h2>
+      {data.bookmarks.map(bookmark => (
+        <a key={bookmark.id} href={bookmark.url || '#'}>
+          {bookmark.title}
+        </a>
+      ))}
+    </div>
+  );
+}
+```
+
+### Server component
+
+```typescript
+import { serverClient } from '@/lib/orpc.server';
+import { notFound } from 'next/navigation';
+
+export default async function ProfilePage({
+  params,
+}: {
+  params: { username: string };
+}) {
+  try {
+    const profile = await serverClient.public.getProfile({
+      username: params.username,
+    });
+    
+    return (
+      <div>
+        <h1>{profile.user.name}'s Bookmarks</h1>
+        <p>Total public groups: {profile.groups.length}</p>
+        <p>Total public bookmarks: {profile.bookmarks.length}</p>
+      </div>
+    );
+  } catch (error) {
+    notFound();
+  }
+}
+```
+
+### Direct client
+
+```typescript
+import { client } from '@/lib/orpc';
+
+try {
+  const profile = await client.public.getProfile.query({
+    username: 'johndoe',
+  });
+  
+  console.log(`${profile.user.name} has ${profile.bookmarks.length} public bookmarks`);
+  
+  // Filter bookmarks by group
+  const groupId = profile.groups[0].id;
+  const groupBookmarks = profile.bookmarks.filter(b => b.groupId === groupId);
+  
+} catch (error) {
+  console.error('Profile not found or not public');
+}
+```
+
+## Example response
+
+```json
+{
+  "user": {
+    "name": "John Doe",
+    "email": "john@example.com",
+    "username": "johndoe",
+    "bio": "Developer and bookmark curator",
+    "github": "https://github.com/johndoe",
+    "twitter": "https://twitter.com/johndoe",
+    "website": "https://johndoe.com",
+    "image": "https://example.com/avatar.jpg",
+    "createdAt": "2024-01-15T10:00:00Z"
+  },
+  "groups": [
+    {
+      "id": "group_1",
+      "name": "Design Resources",
+      "color": "#3b82f6",
+      "createdAt": "2024-01-16T12:00:00Z"
+    }
+  ],
+  "bookmarks": [
+    {
+      "id": "bookmark_1",
+      "title": "Figma",
+      "url": "https://figma.com",
+      "favicon": "https://figma.com/favicon.ico",
+      "type": "link",
+      "color": null,
+      "groupId": "group_1",
+      "createdAt": "2024-01-16T13:00:00Z"
+    }
+  ]
+}
+```
+
+## Related endpoints
+
+- [Get profile](/api/profile/get) - Get your own profile data
+- [Update profile](/api/profile/update) - Make your profile public
+- [Set group visibility](/api/groups/set-visibility) - Control group visibility
+- [Set bookmark visibility](/api/bookmarks/set-visibility) - Control individual bookmark visibility

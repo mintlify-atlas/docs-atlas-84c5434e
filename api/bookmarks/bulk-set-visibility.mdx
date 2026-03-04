@@ -1,0 +1,158 @@
+---
+title: Bulk set visibility
+description: Set visibility for multiple bookmarks at once
+---
+
+Update the visibility of multiple bookmarks in a single operation. Useful for batch privacy updates or when preparing bookmarks for public sharing.
+
+## Endpoint
+
+```typescript
+bookmark.bulkSetVisibility
+```
+
+**Source**: `server/procedures/bookmarks.ts:186`
+
+## Input
+
+<ParamField path="ids" type="string[]" required>
+  Array of bookmark IDs to update (minimum 1)
+</ParamField>
+
+<ParamField path="isPublic" type="boolean | null" required>
+  Visibility setting to apply to all bookmarks:
+  - `true` - Make all bookmarks public
+  - `false` - Make all bookmarks private
+  - `null` - All bookmarks inherit visibility from their parent groups
+</ParamField>
+
+## Response
+
+<ResponseField name="count" type="number">
+  The number of bookmarks successfully updated
+</ResponseField>
+
+## Behavior
+
+- Only bookmarks owned by the authenticated user are updated
+- Bookmarks not owned by the user are silently skipped (no error)
+- The operation returns the total count of successfully updated bookmarks
+- All updates are atomic within a single database transaction
+
+## Usage examples
+
+### React Query (client component)
+
+```typescript
+'use client';
+
+import { client } from '@/lib/orpc';
+import { useSelectedBookmarks } from '@/hooks/use-selection';
+
+function BulkVisibilityControls() {
+  const selectedIds = useSelectedBookmarks();
+  const { mutate, isPending } = client.bookmark.bulkSetVisibility.useMutation();
+  
+  const handleMakeAllPublic = () => {
+    mutate({
+      ids: selectedIds,
+      isPublic: true,
+    });
+  };
+  
+  const handleMakeAllPrivate = () => {
+    mutate({
+      ids: selectedIds,
+      isPublic: false,
+    });
+  };
+  
+  return (
+    <div>
+      <button onClick={handleMakeAllPublic} disabled={isPending}>
+        Make selected public
+      </button>
+      <button onClick={handleMakeAllPrivate} disabled={isPending}>
+        Make selected private
+      </button>
+    </div>
+  );
+}
+```
+
+### Server component
+
+```typescript
+import { serverClient } from '@/lib/orpc.server';
+
+async function makeGroupBookmarksPublic(groupId: string) {
+  // First, get all bookmarks in the group
+  const bookmarks = await serverClient.bookmark.list({ groupId });
+  const bookmarkIds = bookmarks.map(b => b.id);
+  
+  // Then bulk update visibility
+  const result = await serverClient.bookmark.bulkSetVisibility({
+    ids: bookmarkIds,
+    isPublic: true,
+  });
+  
+  console.log(`Updated ${result.count} bookmarks to public`);
+  return result;
+}
+```
+
+### Direct client with error handling
+
+```typescript
+import { client } from '@/lib/orpc';
+
+try {
+  const result = await client.bookmark.bulkSetVisibility.mutate({
+    ids: ['bookmark_1', 'bookmark_2', 'bookmark_3'],
+    isPublic: false,
+  });
+  
+  console.log(`Successfully made ${result.count} bookmarks private`);
+} catch (error) {
+  console.error('Failed to update visibility:', error);
+}
+```
+
+## Use cases
+
+### Preparing for public profile
+Make all bookmarks in a group public before enabling the group's visibility:
+
+```typescript
+const bookmarks = await client.bookmark.list.query({ groupId });
+await client.bookmark.bulkSetVisibility.mutate({
+  ids: bookmarks.map(b => b.id),
+  isPublic: true,
+});
+```
+
+### Privacy cleanup
+Quickly make all selected bookmarks private:
+
+```typescript
+await client.bookmark.bulkSetVisibility.mutate({
+  ids: selectedBookmarkIds,
+  isPublic: false,
+});
+```
+
+### Reset to group defaults
+Remove explicit visibility overrides and let bookmarks inherit from their groups:
+
+```typescript
+await client.bookmark.bulkSetVisibility.mutate({
+  ids: bookmarkIds,
+  isPublic: null, // Inherit from parent groups
+});
+```
+
+## Related endpoints
+
+- [Set bookmark visibility](/api/bookmarks/set-visibility) - Update visibility for a single bookmark
+- [Set group visibility](/api/groups/set-visibility) - Control visibility of entire groups
+- [Bulk move](/api/bookmarks/bulk-operations#bulk-move) - Move multiple bookmarks to a different group

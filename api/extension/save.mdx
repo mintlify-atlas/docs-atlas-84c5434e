@@ -1,0 +1,260 @@
+---
+title: Save bookmark (extension)
+description: Save a bookmark from the browser extension with source tracking and deduplication
+---
+
+The main extension endpoint for saving bookmarks from the Chrome extension. Handles deduplication, source tracking, auto-grouping, and metadata fetching.
+
+## Endpoint
+
+```
+POST /api/extension/bookmark
+```
+
+**Source**: `app/api/extension/bookmark/route.ts:135`
+
+## Authentication
+
+Requires a valid user session. The extension authenticates by including session cookies in the request.
+
+## CORS
+
+This endpoint validates the request origin against configured extension IDs:
+- `chrome-extension://<CHROME_EXTENSION_ID>` (from env)
+- `http://localhost:3000` (for development)
+
+<Warning>
+  Requests from unauthorized origins will receive a 403 Forbidden response.
+</Warning>
+
+## Request body
+
+<ParamField body="url" type="string" required>
+  The URL to bookmark (must be a valid URL)
+</ParamField>
+
+<ParamField body="title" type="string">
+  Optional title to use instead of auto-fetched title
+</ParamField>
+
+<ParamField body="source" type="enum">
+  The source of the bookmark. One of:
+  - `manual_popup` - Saved via extension popup
+  - `manual_context_menu` - Saved via right-click menu
+  - `manual_shortcut` - Saved via keyboard shortcut
+  - `x_bookmark` - Auto-captured from X/Twitter
+  - `browser_bookmark` - Auto-captured from browser bookmarks
+</ParamField>
+
+<ParamField body="destinationGroup" type="string">
+  Optional group name override. If not provided, uses group based on source:
+  - `x_bookmark` → "Imported - X"
+  - `browser_bookmark` → "Imported - Browser"
+  - All others → User's default group (oldest group)
+</ParamField>
+
+<ParamField body="capturedAt" type="string">
+  ISO 8601 timestamp of when the bookmark was captured (defaults to current time)
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean">
+  Always `true` on successful save
+</ResponseField>
+
+<ResponseField name="action" type="enum">
+  The action performed:
+  - `created` - New bookmark created
+  - `updated` - Existing bookmark updated (metadata refreshed)
+  - `reclassified` - Existing bookmark moved to new group due to source priority
+</ResponseField>
+
+<ResponseField name="bookmark" type="object">
+  <Expandable title="bookmark properties">
+    <ResponseField name="id" type="string">
+      The bookmark ID
+    </ResponseField>
+    
+    <ResponseField name="title" type="string">
+      The bookmark title (auto-fetched or provided)
+    </ResponseField>
+    
+    <ResponseField name="url" type="string">
+      The normalized bookmark URL
+    </ResponseField>
+    
+    <ResponseField name="groupName" type="string">
+      The name of the group containing the bookmark
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Deduplication & reclassification
+
+The endpoint uses normalized URLs for deduplication. If a bookmark with the same normalized URL already exists:
+
+1. **Metadata is always updated** (title and favicon refreshed)
+2. **Reclassification occurs if:**
+   - New capture timestamp is more recent, OR
+   - Same timestamp but higher source priority
+
+### Source priority (lowest to highest)
+
+```
+0: manual_popup
+1: manual_context_menu  
+2: manual_shortcut
+3: x_bookmark
+4: browser_bookmark
+```
+
+Manual saves have higher priority than auto-captures. This means manually saving a link will move it out of auto-import groups.
+
+## Source history
+
+The endpoint tracks all sources that have captured a bookmark in the `sourceHistory` field. This allows you to see if a bookmark was both manually saved and auto-imported from X, for example.
+
+## Auto-grouping
+
+If no `destinationGroup` is provided:
+
+- `x_bookmark` → Creates/uses "Imported - X" group
+- `browser_bookmark` → Creates/uses "Imported - Browser" group  
+- All other sources → Uses user's oldest (default) group
+
+Import groups are created automatically with a gray color (`#6b7280`).
+
+## Example requests
+
+### Save from extension popup
+
+```bash
+curl -X POST https://minimal.so/api/extension/bookmark \
+  -H "Content-Type: application/json" \
+  -H "Origin: chrome-extension://your-extension-id" \
+  --cookie "session=your-session-cookie" \
+  -d '{
+    "url": "https://github.com/ephraimduncan/minimal.so",
+    "source": "manual_popup"
+  }'
+```
+
+### Save from context menu with custom title
+
+```bash
+curl -X POST https://minimal.so/api/extension/bookmark \
+  -H "Content-Type: application/json" \
+  -H "Origin: chrome-extension://your-extension-id" \
+  --cookie "session=your-session-cookie" \
+  -d '{
+    "url": "https://example.com/article",
+    "title": "My Custom Title",
+    "source": "manual_context_menu"
+  }'
+```
+
+### Auto-capture from X
+
+```bash
+curl -X POST https://minimal.so/api/extension/bookmark \
+  -H "Content-Type: application/json" \
+  -H "Origin: chrome-extension://your-extension-id" \
+  --cookie "session=your-session-cookie" \
+  -d '{
+    "url": "https://x.com/user/status/123456",
+    "source": "x_bookmark",
+    "capturedAt": "2024-01-15T10:30:00Z"
+  }'
+```
+
+## Example responses
+
+### Created new bookmark
+
+```json
+{
+  "success": true,
+  "action": "created",
+  "bookmark": {
+    "id": "cm3x1y2z3...",
+    "title": "Minimal - Simple Bookmarking",
+    "url": "https://github.com/ephraimduncan/minimal.so",
+    "groupName": "Bookmarks"
+  }
+}
+```
+
+### Updated existing bookmark
+
+```json
+{
+  "success": true,
+  "action": "updated",
+  "bookmark": {
+    "id": "cm3x1y2z3...",
+    "title": "Updated Title from Metadata",
+    "url": "https://github.com/ephraimduncan/minimal.so",
+    "groupName": "Bookmarks"
+  }
+}
+```
+
+### Reclassified to new group
+
+```json
+{
+  "success": true,
+  "action": "reclassified",
+  "bookmark": {
+    "id": "cm3x1y2z3...",
+    "title": "Minimal - Simple Bookmarking",
+    "url": "https://github.com/ephraimduncan/minimal.so",
+    "groupName": "Imported - X"
+  }
+}
+```
+
+## Error responses
+
+### Unauthorized (401)
+
+```json
+{
+  "error": "Please log in to save bookmarks",
+  "code": "Unauthorized"
+}
+```
+
+### Invalid URL (400)
+
+```json
+{
+  "error": "Invalid URL provided",
+  "code": "Bad Request"
+}
+```
+
+### No group exists (400)
+
+```json
+{
+  "error": "No bookmark group found. Please create one first.",
+  "code": "No Group"
+}
+```
+
+### Origin not allowed (403)
+
+```json
+{
+  "error": "Origin not allowed",
+  "code": "Forbidden"
+}
+```
+
+## Related endpoints
+
+- [Check bookmarks](/api/extension/check) - Check if URLs are already bookmarked
+- [Bulk import](/api/extension/import) - Import multiple bookmarks at once
+- [Create bookmark (oRPC)](/api/bookmarks/create) - Create bookmark via oRPC API

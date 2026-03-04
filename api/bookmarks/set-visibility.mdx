@@ -1,0 +1,147 @@
+---
+title: Set bookmark visibility
+description: Set the visibility of a single bookmark to public, private, or inherit from group
+---
+
+Set whether a bookmark is public, private, or inherits visibility from its parent group. This endpoint allows fine-grained control over individual bookmark visibility.
+
+## Endpoint
+
+```typescript
+bookmark.setVisibility
+```
+
+**Source**: `server/procedures/bookmarks.ts:178`
+
+## Input
+
+<ParamField path="id" type="string" required>
+  The ID of the bookmark to update
+</ParamField>
+
+<ParamField path="isPublic" type="boolean | null" required>
+  Visibility setting:
+  - `true` - Make bookmark public
+  - `false` - Make bookmark private
+  - `null` - Inherit visibility from parent group
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="string">
+  The bookmark ID
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  The bookmark title
+</ResponseField>
+
+<ResponseField name="url" type="string | null">
+  The bookmark URL (null for color/text bookmarks)
+</ResponseField>
+
+<ResponseField name="isPublic" type="boolean | null">
+  The updated visibility setting
+</ResponseField>
+
+<ResponseField name="groupId" type="string">
+  The parent group ID
+</ResponseField>
+
+<ResponseField name="userId" type="string">
+  The owner's user ID
+</ResponseField>
+
+<ResponseField name="createdAt" type="string">
+  ISO 8601 timestamp of creation
+</ResponseField>
+
+<ResponseField name="updatedAt" type="string">
+  ISO 8601 timestamp of last update
+</ResponseField>
+
+## Visibility inheritance
+
+When `isPublic` is set to `null`, the bookmark inherits its visibility from the parent group:
+
+- If the group is public, the bookmark is visible on public profiles
+- If the group is private, the bookmark is hidden from public profiles
+
+Setting an explicit `true` or `false` overrides the group's visibility for this specific bookmark.
+
+## Usage examples
+
+### React Query (client component)
+
+```typescript
+'use client';
+
+import { client } from '@/lib/orpc';
+
+function BookmarkVisibilityToggle({ bookmarkId }: { bookmarkId: string }) {
+  const { mutate } = client.bookmark.setVisibility.useMutation();
+  
+  const handleMakePublic = () => {
+    mutate({
+      id: bookmarkId,
+      isPublic: true,
+    });
+  };
+  
+  const handleMakePrivate = () => {
+    mutate({
+      id: bookmarkId,
+      isPublic: false,
+    });
+  };
+  
+  const handleInheritFromGroup = () => {
+    mutate({
+      id: bookmarkId,
+      isPublic: null, // Inherit from parent group
+    });
+  };
+  
+  return (
+    <div>
+      <button onClick={handleMakePublic}>Make public</button>
+      <button onClick={handleMakePrivate}>Make private</button>
+      <button onClick={handleInheritFromGroup}>Inherit from group</button>
+    </div>
+  );
+}
+```
+
+### Server component
+
+```typescript
+import { serverClient } from '@/lib/orpc.server';
+
+async function setBookmarkPublic(bookmarkId: string) {
+  const bookmark = await serverClient.bookmark.setVisibility({
+    id: bookmarkId,
+    isPublic: true,
+  });
+  
+  return bookmark;
+}
+```
+
+### Direct client
+
+```typescript
+import { client } from '@/lib/orpc';
+
+const bookmark = await client.bookmark.setVisibility.mutate({
+  id: 'bookmark_id',
+  isPublic: false, // Make private
+});
+
+console.log(`Bookmark visibility: ${bookmark.isPublic}`);
+```
+
+## Related endpoints
+
+- [Bulk set visibility](/api/bookmarks/bulk-set-visibility) - Set visibility for multiple bookmarks at once
+- [Set group visibility](/api/groups/set-visibility) - Control visibility of entire groups
+- [Update bookmark](/api/bookmarks/update) - Update other bookmark properties
