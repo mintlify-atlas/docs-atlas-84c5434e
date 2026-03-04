@@ -1,0 +1,90 @@
+---
+title: Create Group
+description: Create a new bookmark group
+---
+
+## Endpoint
+
+```
+group.create
+```
+
+Creates a new group for organizing bookmarks.
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Request
+
+<ParamField name="name" type="string" required>
+  Name of the group
+</ParamField>
+
+<ParamField name="color" type="string" required>
+  Hex color code for the group (e.g., `#3b82f6`)
+</ParamField>
+
+## Response
+
+Returns the created group object.
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the created group
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Group name
+</ResponseField>
+
+<ResponseField name="color" type="string" required>
+  Hex color code for the group
+</ResponseField>
+
+<ResponseField name="userId" type="string" required>
+  ID of the user who owns the group
+</ResponseField>
+
+<ResponseField name="createdAt" type="date" required>
+  Timestamp when the group was created
+</ResponseField>
+
+<ResponseField name="updatedAt" type="date" required>
+  Timestamp when the group was last updated
+</ResponseField>
+
+## Example
+
+```typescript
+import { client } from '@/lib/client';
+
+const group = await client.group.create({
+  name: "Development Resources",
+  color: "#3b82f6"
+});
+
+console.log(group);
+// {
+//   id: "grp_123",
+//   name: "Development Resources",
+//   color: "#3b82f6",
+//   userId: "usr_456",
+//   createdAt: Date,
+//   updatedAt: Date
+// }
+```
+
+## Schema
+
+```typescript
+const createGroupSchema = z.object({
+  name: z.string(),
+  color: z.string(),
+});
+```
+
+## Source
+
+- Schema: `lib/schema.ts:107`
+- Implementation: `server/procedures/bookmarks.ts:149`
+- Router: `server/router.ts:39`

@@ -1,0 +1,250 @@
+---
+title: Update Bookmark
+description: Update an existing bookmark's properties
+---
+
+## Endpoint
+
+```typescript
+client.bookmark.update(input)
+```
+
+**Defined in:** `server/procedures/bookmarks.ts:97`
+
+## Authentication
+
+This endpoint requires authentication. See [Authentication](/api/authentication) for details.
+
+## Request
+
+<ParamField path="id" type="string" required>
+  ID of the bookmark to update
+</ParamField>
+
+<ParamField path="title" type="string" optional>
+  Updated display title
+</ParamField>
+
+<ParamField path="url" type="string" optional>
+  Updated URL (for link-type bookmarks)
+</ParamField>
+
+<ParamField path="type" type="'link' | 'color' | 'text'" optional>
+  Updated bookmark type
+</ParamField>
+
+<ParamField path="color" type="string" optional>
+  Updated color value
+</ParamField>
+
+<ParamField path="groupId" type="string" optional>
+  Move the bookmark to a different group. When moving groups, the bookmark's `isPublic` status is automatically reset to `null`.
+</ParamField>
+
+### Input Schema
+
+```typescript
+{
+  id: string;
+  title?: string;
+  url?: string;
+  type?: 'link' | 'color' | 'text';
+  color?: string;
+  groupId?: string;
+}
+```
+
+Defined in `lib/schema.ts:98`.
+
+## Response
+
+Returns the updated bookmark object.
+
+<ResponseField name="id" type="string" required>
+  The bookmark ID
+</ResponseField>
+
+<ResponseField name="title" type="string" required>
+  Updated title
+</ResponseField>
+
+<ResponseField name="url" type="string | null">
+  Updated URL
+</ResponseField>
+
+<ResponseField name="favicon" type="string | null">
+  Favicon URL (unchanged by update)
+</ResponseField>
+
+<ResponseField name="type" type="'link' | 'color' | 'text'" required>
+  Bookmark type
+</ResponseField>
+
+<ResponseField name="color" type="string | null">
+  Color value
+</ResponseField>
+
+<ResponseField name="groupId" type="string" required>
+  Group ID (possibly updated)
+</ResponseField>
+
+<ResponseField name="isPublic" type="boolean | null">
+  Public visibility status (reset to `null` when moved to a different group)
+</ResponseField>
+
+<ResponseField name="userId" type="string" required>
+  Owner's user ID
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date" required>
+  Original creation timestamp
+</ResponseField>
+
+<ResponseField name="updatedAt" type="Date" required>
+  Updated timestamp (automatically set to current time)
+</ResponseField>
+
+## Examples
+
+### Update Bookmark Title
+
+```tsx
+import { orpc } from '@/lib/orpc';
+
+function EditBookmark({ bookmarkId }: { bookmarkId: string }) {
+  const updateMutation = orpc.bookmark.update.useMutation();
+
+  const handleUpdate = async (newTitle: string) => {
+    await updateMutation.mutateAsync({
+      id: bookmarkId,
+      title: newTitle,
+    });
+  };
+
+  return (
+    <input
+      onChange={(e) => handleUpdate(e.target.value)}
+      placeholder="Bookmark title"
+    />
+  );
+}
+```
+
+### Move Bookmark to Different Group
+
+```typescript
+import { client } from '@/lib/orpc';
+
+const bookmark = await client.bookmark.update({
+  id: 'clx123456',
+  groupId: 'clx789012', // Move to new group
+});
+
+// Note: isPublic is automatically reset to null
+console.log(bookmark.isPublic); // null
+```
+
+### Update Multiple Properties
+
+```tsx
+import { serverClient } from '@/lib/orpc.server';
+
+const updated = await serverClient.bookmark.update({
+  id: 'clx123456',
+  title: 'Updated Title',
+  type: 'color',
+  color: '#FF5733',
+});
+```
+
+## Behavior
+
+### Partial Updates
+
+Only the fields provided in the input are updated. Other fields remain unchanged:
+
+```typescript
+// Only updates the title
+await client.bookmark.update({
+  id: 'clx123456',
+  title: 'New Title',
+});
+```
+
+### Group Ownership Verification
+
+When updating the `groupId`, the target group must exist and belong to the authenticated user. From `server/procedures/bookmarks.ts:103`:
+
+```typescript
+if (data.groupId) {
+  await assertGroupOwnership(data.groupId, context.user.id);
+  // ...
+}
+```
+
+### Visibility Reset on Group Change
+
+When moving a bookmark to a different group, the `isPublic` status is automatically reset to prevent visibility inheritance:
+
+```typescript
+const existing = await db.bookmark.findFirst({
+  where: { id, userId: context.user.id },
+  select: { groupId: true },
+});
+if (existing && existing.groupId !== data.groupId) {
+  updateData.isPublic = null;
+}
+```
+
+This ensures that public/private settings don't carry over when organizing bookmarks.
+
+### Automatic Timestamp Update
+
+The `updatedAt` field is automatically set to the current timestamp on every update.
+
+## Implementation
+
+From `server/procedures/bookmarks.ts:97`:
+
+```typescript
+export const updateBookmark = authed
+  .input(updateBookmarkSchema)
+  .handler(async ({ context, input }) => {
+    const { id, ...data } = input;
+    const updateData: Record<string, unknown> = { ...data };
+
+    if (data.groupId) {
+      await assertGroupOwnership(data.groupId, context.user.id);
+      const existing = await db.bookmark.findFirst({
+        where: { id, userId: context.user.id },
+        select: { groupId: true },
+      });
+      if (existing && existing.groupId !== data.groupId) {
+        updateData.isPublic = null;
+      }
+    }
+
+    const bookmark = await db.bookmark.update({
+      where: { id, userId: context.user.id },
+      data: updateData,
+    });
+    return bookmark;
+  });
+```
+
+## Errors
+
+<ResponseField name="NOT_FOUND" type="error">
+  The bookmark with the specified `id` does not exist or does not belong to the authenticated user. Also thrown if the target `groupId` is invalid.
+</ResponseField>
+
+<ResponseField name="UNAUTHORIZED" type="error">
+  User is not authenticated.
+</ResponseField>
+
+## Notes
+
+- Updates are automatically scoped to the authenticated user via the `where` clause
+- Updating the URL does not trigger metadata refetching (use the [refetch endpoint](/api/bookmarks/refetch) for that)
+- All fields except `id` are optional
+- The update is atomic and transactional

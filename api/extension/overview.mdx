@@ -1,0 +1,64 @@
+---
+title: Extension API Overview
+description: REST API endpoints for the Minimal browser extension
+---
+
+The Extension API provides REST endpoints for the browser extension to save and manage bookmarks. These are Next.js API routes (not oRPC) and require CORS validation.
+
+## Authentication
+
+All Extension API endpoints require authentication via session cookie. Requests are authenticated using Next.js session management.
+
+## CORS
+
+Requests must originate from allowed extension origins. The API validates the `Origin` header and returns appropriate CORS headers.
+
+## Endpoints
+
+### Save Bookmark
+
+`POST /api/extension/bookmark`
+
+Saves a bookmark from the browser extension. See [Import Bookmark](/api/extension/import).
+
+### Import Bookmarks
+
+`POST /api/extension/import`
+
+Bulk import bookmarks from browser or other sources. See [Import Bookmarks](/api/extension/import).
+
+### Check Bookmarks
+
+`POST /api/extension/bookmark/check`
+
+Check if URLs are already bookmarked. See [Check Bookmark](/api/extension/check).
+
+## Error Responses
+
+All endpoints return consistent error responses:
+
+```json
+{
+  "error": "Error Type",
+  "message": "Human-readable error message"
+}
+```
+
+Common error types:
+- `Forbidden` (403) - Origin not allowed or CORS failure
+- `Unauthorized` (401) - User not authenticated
+- `Bad Request` (400) - Invalid request body or parameters
+- `Server Error` (500) - Internal server error
+
+## Rate Limiting
+
+No explicit rate limiting is currently enforced, but bulk operations have size limits:
+- Import: 2,000 bookmarks per request
+- Check: 100 URLs per request
+
+## Source Files
+
+- Bookmark save: `app/api/extension/bookmark/route.ts`
+- Import: `app/api/extension/import/route.ts`
+- Check: `app/api/extension/bookmark/check/route.ts`
+- Shared utilities: `app/api/extension/shared.ts`

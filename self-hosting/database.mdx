@@ -1,0 +1,514 @@
+---
+title: Database Setup
+description: Configure SQLite or Turso database for Minimal
+---
+
+Minimal uses Prisma ORM with SQLite as the database engine. You can use either local SQLite files for development or Turso (distributed SQLite) for production.
+
+## Database Architecture
+
+Minimal's database is built on:
+
+- **ORM**: Prisma 7.0.1
+- **Database**: SQLite (via libSQL)
+- **Adapter**: `@prisma/adapter-libsql` with `@libsql/client`
+- **Production**: Turso (distributed SQLite)
+
+## Database Schema
+
+Minimal uses the following database models:
+
+### User Model
+
+Stores user account information:
+
+```prisma
+model user {
+  id              String   @id @default(cuid())
+  name            String
+  email           String   @unique
+  emailVerified   Boolean  @default(false)
+  image           String?
+  username        String?  @unique
+  bio             String?
+  github          String?
+  twitter         String?
+  website         String?
+  isProfilePublic Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  sessions  session[]
+  accounts  account[]
+  bookmarks bookmark[]
+  groups    group[]
+}
+```
+
+### Session Model
+
+Manages user authentication sessions:
+
+```prisma
+model session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
+
+### Account Model
+
+Stores OAuth and password authentication data:
+
+```prisma
+model account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  user user @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
+
+### Group Model
+
+Organizes bookmarks into groups:
+
+```prisma
+model group {
+  id        String   @id @default(cuid())
+  name      String
+  color     String
+  isPublic  Boolean  @default(false)
+  userId    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      user       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookmarks bookmark[]
+}
+```
+
+### Bookmark Model
+
+Stores individual bookmarks:
+
+```prisma
+model bookmark {
+  id             String    @id @default(cuid())
+  title          String
+  url            String?
+  normalizedUrl  String?
+  favicon        String?
+  type           String    @default("link")
+  color          String?
+  isPublic       Boolean?
+  primarySource  String?
+  sourceHistory  String?
+  lastCapturedAt DateTime?
+  groupId        String
+  userId         String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  group group @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user  user  @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+```
+
+### Verification Model
+
+Handles email verification and password reset tokens:
+
+```prisma
+model verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+```
+
+## Local SQLite Setup
+
+<Note>
+Local SQLite is perfect for development and small deployments. For production, consider using Turso.
+</Note>
+
+### Configuration
+
+<Steps>
+  <Step title="Set Database URL">
+    Configure `DATABASE_URL` in your `.env` file:
+
+    ```bash .env
+    DATABASE_URL="file:./dev.db"
+    ```
+
+    This creates a SQLite database file named `dev.db` in your project root.
+  </Step>
+
+  <Step title="Generate Prisma Client">
+    Generate the Prisma client from your schema:
+
+    ```bash
+    bun run db:generate
+    ```
+
+    This creates type-safe database client in `./prisma/generated/client/`.
+  </Step>
+
+  <Step title="Push Schema to Database">
+    Create database tables from your schema:
+
+    ```bash
+    bun run db:push
+    ```
+
+    This creates all tables, indexes, and constraints in your SQLite database.
+  </Step>
+
+  <Step title="Verify Setup">
+    Open Prisma Studio to view your database:
+
+    ```bash
+    bun run db:studio
+    ```
+
+    This opens a web interface at `http://localhost:5555` to browse your data.
+  </Step>
+</Steps>
+
+### Database Location
+
+By default, the SQLite database is created at `./dev.db` relative to your project root. You can customize this:
+
+```bash .env
+# Relative path
+DATABASE_URL="file:./database/minimal.db"
+
+# Absolute path
+DATABASE_URL="file:/var/lib/minimal/minimal.db"
+```
+
+<Warning>
+Ensure the application has write permissions to the database directory.
+</Warning>
+
+## Turso Setup (Production)
+
+Turso is a distributed SQLite database perfect for production deployments. It provides:
+
+- Global edge replicas
+- Automatic backups
+- Point-in-time recovery
+- Better scalability than local SQLite
+
+### Installation
+
+<Steps>
+  <Step title="Install Turso CLI">
+    ```bash
+    curl -sSfL https://get.tur.so/install.sh | bash
+    ```
+  </Step>
+
+  <Step title="Authenticate">
+    ```bash
+    turso auth login
+    ```
+
+    This opens a browser window to authenticate with GitHub.
+  </Step>
+
+  <Step title="Create Database">
+    ```bash
+    turso db create minimal-production
+    ```
+
+    For better performance, create the database in a region close to your users:
+
+    ```bash
+    turso db create minimal-production --location iad
+    ```
+
+    Available locations: `iad` (US East), `sjc` (US West), `fra` (Europe), `nrt` (Asia), etc.
+  </Step>
+
+  <Step title="Get Connection Details">
+    ```bash
+    turso db show minimal-production
+    ```
+
+    This displays your database URL and other details.
+  </Step>
+
+  <Step title="Create Auth Token">
+    ```bash
+    turso db tokens create minimal-production
+    ```
+
+    This generates an authentication token for your application.
+  </Step>
+
+  <Step title="Configure Environment">
+    Add to your `.env` file:
+
+    ```bash .env
+    TURSO_DATABASE_URL="libsql://minimal-production-your-org.turso.io"
+    TURSO_AUTH_TOKEN="eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9..."
+    ```
+  </Step>
+
+  <Step title="Push Schema">
+    ```bash
+    bunx prisma db push
+    ```
+
+    This creates all tables in your Turso database.
+  </Step>
+</Steps>
+
+### Database Connection
+
+The database connection logic in `lib/db.ts` automatically selects the correct database:
+
+```typescript
+const databaseUrl =
+  process.env.TURSO_DATABASE_URL ??
+  process.env.DATABASE_URL ??
+  "file:./dev.db";
+
+const adapter = new PrismaLibSql({
+  url: databaseUrl,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+```
+
+Priority order:
+1. `TURSO_DATABASE_URL` + `TURSO_AUTH_TOKEN` (production)
+2. `DATABASE_URL` (local SQLite)
+3. `file:./dev.db` (fallback)
+
+## Database Migrations
+
+### Development Workflow
+
+For development, use `db:push` for rapid iteration:
+
+```bash
+bun run db:push
+```
+
+This synchronizes your schema without creating migration files.
+
+### Production Migrations
+
+For production, use proper migrations:
+
+<Steps>
+  <Step title="Create Migration">
+    ```bash
+    bunx prisma migrate dev --name your_migration_name
+    ```
+
+    This creates a migration file in `prisma/migrations/`.
+  </Step>
+
+  <Step title="Review Migration">
+    Check the generated SQL in `prisma/migrations/[timestamp]_your_migration_name/migration.sql`.
+  </Step>
+
+  <Step title="Deploy to Turso">
+    ```bash
+    turso db shell minimal-production < prisma/migrations/[timestamp]_your_migration_name/migration.sql
+    ```
+
+    Or use the npm script:
+
+    ```bash
+    bun run db:migrate:deploy [timestamp]_your_migration_name
+    ```
+  </Step>
+</Steps>
+
+## Database Management
+
+### View Data
+
+Open Prisma Studio to browse and edit data:
+
+```bash
+bun run db:studio
+```
+
+### Backup Local Database
+
+```bash
+cp dev.db dev.db.backup
+```
+
+### Backup Turso Database
+
+Turso provides automatic backups and point-in-time recovery:
+
+```bash
+# Create manual backup
+turso db dump minimal-production > backup.sql
+
+# Restore from backup
+turso db shell minimal-production < backup.sql
+```
+
+### Reset Database
+
+<Warning>
+This will delete all data. Only use in development.
+</Warning>
+
+```bash
+# Delete database file
+rm dev.db
+
+# Recreate schema
+bun run db:push
+```
+
+## Performance Optimization
+
+### Indexes
+
+Minimal includes optimized indexes for common queries:
+
+```prisma
+@@index([userId])
+@@index([userId, isPublic])
+@@index([groupId])
+@@index([createdAt])
+@@index([userId, normalizedUrl])
+```
+
+### Connection Pooling
+
+Prisma automatically manages connection pooling. For Turso, connections are multiplexed over HTTP.
+
+### Query Optimization
+
+Use Prisma's built-in query optimization:
+
+```typescript
+// Include relations efficiently
+const bookmarks = await db.bookmark.findMany({
+  include: {
+    group: true,
+    user: true,
+  },
+});
+
+// Use select for specific fields
+const bookmarks = await db.bookmark.findMany({
+  select: {
+    id: true,
+    title: true,
+    url: true,
+  },
+});
+```
+
+## Troubleshooting
+
+### "No database URL configured for production"
+
+This error occurs when `DATABASE_URL` or `TURSO_DATABASE_URL` is not set in production:
+
+```bash .env
+# Add one of these:
+DATABASE_URL="file:./minimal.db"
+# OR
+TURSO_DATABASE_URL="libsql://your-db.turso.io"
+TURSO_AUTH_TOKEN="your-token"
+```
+
+### "Table does not exist"
+
+Run database push to create tables:
+
+```bash
+bun run db:push
+```
+
+### "Permission denied" on SQLite file
+
+Ensure the application has write access:
+
+```bash
+chmod 644 dev.db
+chmod 755 .
+```
+
+### Turso connection timeout
+
+1. Verify `TURSO_DATABASE_URL` is correct
+2. Check `TURSO_AUTH_TOKEN` is valid
+3. Ensure network connectivity to Turso
+
+## Database Schema Changes
+
+When modifying the schema:
+
+<Steps>
+  <Step title="Edit Schema">
+    Modify `prisma/schema.prisma`
+  </Step>
+
+  <Step title="Format Schema">
+    ```bash
+    bunx prisma format
+    ```
+  </Step>
+
+  <Step title="Generate Client">
+    ```bash
+    bun run db:generate
+    ```
+  </Step>
+
+  <Step title="Apply Changes">
+    **Development:**
+    ```bash
+    bun run db:push
+    ```
+
+    **Production:**
+    ```bash
+    bunx prisma migrate dev
+    bun run db:migrate:deploy [migration-name]
+    ```
+  </Step>
+</Steps>
+
+## Next Steps
+
+- [Authentication Setup](/self-hosting/authentication) - Configure Better Auth
+- [Configuration](/self-hosting/configuration) - Environment variables
+- [Installation](/self-hosting/installation) - Complete installation guide

@@ -1,0 +1,294 @@
+---
+title: Public Profiles
+description: Share your bookmarks with the world via your public profile
+---
+
+Public profiles let you showcase curated bookmark collections to others. Create a professional portfolio of resources, tools, and references.
+
+## Setting Up Your Profile
+
+### Username
+
+Claim your unique username:
+
+1. Open Settings (click your avatar → Settings)
+2. Go to the "Public Profile" tab
+3. Enter a username (lowercase letters, numbers, and hyphens only)
+4. Wait for availability check (green checkmark = available)
+5. Click "Save"
+
+Your profile URL will be: `minimal.so/u/your-username`
+
+#### Username Validation
+
+Usernames must meet these requirements:
+
+```typescript
+const usernameSchema = z.string()
+  .min(3, "Username must be at least 3 characters")
+  .max(20, "Username must be at most 20 characters")
+  .regex(/^[a-z0-9-]+$/, "Username can only contain lowercase letters, numbers, and hyphens");
+```
+
+#### Real-time Availability
+
+As you type, Minimal checks availability:
+- **Checking**: Gray spinner while validating
+- **Available**: Green checkmark - username is yours!
+- **Taken**: Red X - try another one
+- **Invalid**: Red X with error message
+
+The check is debounced by 400ms for better performance.
+
+### Profile Visibility
+
+Control who can see your profile:
+
+1. In Settings → Public Profile
+2. Toggle "Public Profile" switch
+3. When enabled, your profile is accessible at `/u/username`
+4. When disabled, the profile page shows a 404 error
+
+<Note>
+Setting a username automatically enables your public profile. Toggle it off if you want to keep your profile private while keeping your username.
+</Note>
+
+## Profile Information
+
+Customize your profile with:
+
+### Bio
+- Up to 160 characters
+- Appears below your name on your profile
+- Great for a tagline or description
+
+### Social Links
+
+Connect your social accounts:
+- **GitHub**: Your GitHub username (without @)
+- **Twitter/X**: Your Twitter handle (without @)
+- **Website**: Any URL (https:// is added automatically)
+
+These appear as clickable links on your profile.
+
+### Profile Picture
+
+Your profile displays:
+- The avatar you upload in Settings → General
+- Or your initials if no avatar is uploaded
+- Avatar also appears in the dashboard header
+
+## Making Content Public
+
+### Public Groups
+
+Make an entire group public:
+
+1. Click the group selector dropdown
+2. Select "Make Public" for the current group
+3. Confirm the action
+4. All bookmarks in the group become visible on your profile
+
+<Warning>
+Making a group public exposes **all bookmarks** in that group. Review the contents first!
+</Warning>
+
+### Public Bookmarks
+
+Control visibility of individual bookmarks:
+
+#### In a Private Group
+- Right-click a bookmark → "Make Public"
+- The bookmark appears on your profile
+- Globe icon appears next to the bookmark
+
+#### In a Public Group
+- All bookmarks are public by default
+- Right-click → "Make Private" to hide specific ones
+- Hidden bookmarks won't appear on your profile
+
+### Visibility Hierarchy
+
+```
+Group: Public
+  Bookmark A: (default) → Public ✓
+  Bookmark B: isPublic = false → Private ✗
+  Bookmark C: isPublic = true → Public ✓
+
+Group: Private
+  Bookmark D: (default) → Private ✗
+  Bookmark E: isPublic = true → Public ✓
+  Bookmark F: isPublic = false → Private ✗
+```
+
+## Bulk Visibility Controls
+
+Change visibility for multiple bookmarks:
+
+1. Enter selection mode (right-click → "Select Multiple")
+2. Select the bookmarks you want to change
+3. In the toolbar, click:
+   - **Make Public**: Makes all selected bookmarks visible
+   - **Make Private**: Hides all selected bookmarks
+
+<Note>
+Bulk visibility controls are context-aware. In a public group, you'll see "Make Private". In a private group, you'll see "Make Public".
+</Note>
+
+## Profile Features
+
+### Profile Actions
+
+From Settings → Public Profile:
+
+- **Copy Profile Link**: Copy your profile URL to clipboard
+- **Preview Profile**: Open your profile in a new tab
+
+Both buttons appear when you have a valid, available username.
+
+### Profile Display
+
+Your public profile shows:
+
+1. **Header**:
+   - Profile picture
+   - Name
+   - Username
+   - Bio
+   - Social links
+
+2. **Groups**:
+   - Only public groups appear
+   - Group name with colored indicator
+   - Bookmark count
+
+3. **Bookmarks**:
+   - Public bookmarks from public groups
+   - Plus bookmarks marked public in private groups
+   - Same visual style as your dashboard
+   - Click to open in new tab
+
+## Privacy & Security
+
+### What's Hidden
+
+- Private groups (completely invisible)
+- Private bookmarks within public groups
+- Your email address
+- Account settings
+- Any content marked private
+
+### What's Public
+
+- Your username and profile URL
+- Bio and social links (if set)
+- Public groups and their contents
+- Individual bookmarks marked public
+- Profile picture
+
+### Changing Your Mind
+
+You can make content private anytime:
+
+1. **Single bookmark**: Right-click → "Make Private"
+2. **Entire group**: Group dropdown → "Make Private"
+3. **Entire profile**: Settings → Toggle "Public Profile" off
+
+Changes take effect immediately.
+
+## Use Cases
+
+<CardGroup cols={2}>
+  <Card title="Resource Libraries" icon="books">
+    Share curated lists of tools, articles, and references with your team or community.
+  </Card>
+  
+  <Card title="Portfolio" icon="briefcase">
+    Showcase your work, projects, and design inspiration to potential clients or employers.
+  </Card>
+  
+  <Card title="Learning Paths" icon="graduation-cap">
+    Create public collections of educational resources for specific topics or skills.
+  </Card>
+  
+  <Card title="Tool Directories" icon="wrench">
+    Build public directories of tools and services you recommend in your field.
+  </Card>
+</CardGroup>
+
+## Profile Optimization Tips
+
+<Steps>
+  <Step title="Choose a Professional Username">
+    Use your name, brand, or field: `john-smith`, `design-resources`, `web-dev-tools`
+  </Step>
+  
+  <Step title="Write a Clear Bio">
+    Explain what visitors will find: "Curated design tools and resources" or "Full-stack developer resources"
+  </Step>
+  
+  <Step title="Organize Groups Thoughtfully">
+    Create topic-specific groups: "Design Tools", "Learning Resources", "Inspiration"
+  </Step>
+  
+  <Step title="Review Before Publishing">
+    Check your public groups for any personal or sensitive bookmarks before making them public
+  </Step>
+  
+  <Step title="Add Social Links">
+    Connect your GitHub, Twitter, and website so visitors can find you elsewhere
+  </Step>
+</Steps>
+
+## Profile Settings Reference
+
+| Setting | Type | Validation | Example |
+|---------|------|------------|----------|
+| Username | String | 3-20 chars, lowercase, alphanumeric + hyphens | `john-doe` |
+| Bio | String | Max 160 chars | Building cool things on the web |
+| GitHub | String | Username only | `ephraimduncan` |
+| Twitter | String | Handle only | `ephraimduncan` |
+| Website | URL | Valid URL, https:// added | `ephraimduncan.com` |
+| Public Profile | Boolean | On/Off toggle | `true` |
+
+## API Reference
+
+### Check Username Availability
+
+```typescript
+const { data } = await client.profile.checkUsername({
+  username: "john-doe"
+});
+// Returns: { available: true }
+```
+
+### Update Profile
+
+```typescript
+await client.profile.update({
+  username: "john-doe",
+  bio: "Building cool things",
+  github: "johndoe",
+  twitter: "johndoe",
+  website: "https://johndoe.com",
+  isProfilePublic: true
+});
+```
+
+### Set Group Visibility
+
+```typescript
+await client.group.setVisibility({
+  id: groupId,
+  isPublic: true
+});
+```
+
+### Set Bookmark Visibility
+
+```typescript
+await client.bookmark.setVisibility({
+  id: bookmarkId,
+  isPublic: true // or false or null
+});
+```

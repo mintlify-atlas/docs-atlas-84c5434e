@@ -1,0 +1,128 @@
+---
+title: Check Bookmarks
+description: Check if URLs are already bookmarked
+---
+
+## Endpoint
+
+```
+POST /api/extension/bookmark/check
+```
+
+Checks whether one or more URLs are already saved as bookmarks for the authenticated user.
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Headers
+
+<ParamField name="Origin" type="string" required>
+  Must be an allowed extension origin
+</ParamField>
+
+<ParamField name="Content-Type" type="string" required>
+  Must be `application/json`
+</ParamField>
+
+## Request Body
+
+<ParamField name="urls" type="string[]" required>
+  Array of URLs to check (minimum 1, maximum 100)
+</ParamField>
+
+## Response
+
+<ResponseField name="saved" type="object" required>
+  Object mapping each input URL to a boolean indicating if it's saved
+</ResponseField>
+
+## Example
+
+```javascript
+const response = await fetch('https://minimal.to/api/extension/bookmark/check', {
+  method: 'POST',
+  credentials: 'include',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    urls: [
+      'https://example.com/page1',
+      'https://example.com/page2',
+      'https://example.com/page3'
+    ]
+  })
+});
+
+const data = await response.json();
+console.log(data);
+// {
+//   saved: {
+//     "https://example.com/page1": true,
+//     "https://example.com/page2": false,
+//     "https://example.com/page3": true
+//   }
+// }
+```
+
+## Behavior
+
+### URL Normalization
+
+URLs are canonicalized before checking:
+- Protocol normalization (http/https)
+- Trailing slash handling
+- Query parameter ordering
+- Fragment removal
+
+The response uses the original input URLs as keys, not the normalized versions.
+
+### Invalid URLs
+
+If a URL cannot be normalized (invalid format), it will be marked as `false` in the response.
+
+## Schema
+
+```typescript
+const checkSchema = z.object({
+  urls: z.array(z.string()).min(1).max(100),
+});
+```
+
+## Error Responses
+
+```json
+// 401 Unauthorized
+{
+  "error": "Unauthorized"
+}
+
+// 400 Bad Request
+{
+  "error": "Bad Request"
+}
+
+// 403 Forbidden
+{
+  "error": "Forbidden"
+}
+```
+
+## Use Cases
+
+- Show visual indicators in browser extension for already-saved pages
+- Bulk validation of bookmark lists
+- Prevent duplicate saves
+- Sync bookmark state across devices
+
+## Performance
+
+- Maximum 100 URLs per request
+- Uses database index on `normalizedUrl` for fast lookups
+- Single database query for all URLs
+
+## Source
+
+- Implementation: `app/api/extension/bookmark/check/route.ts:16`
+- Schema: `route.ts:8`

@@ -1,0 +1,241 @@
+---
+title: Create Bookmark
+description: Create a new bookmark with automatic metadata fetching for links
+---
+
+## Endpoint
+
+```typescript
+client.bookmark.create(input)
+```
+
+**Defined in:** `server/procedures/bookmarks.ts:41`
+
+## Authentication
+
+This endpoint requires authentication. See [Authentication](/api/authentication) for details.
+
+## Request
+
+<ParamField path="title" type="string" required>
+  Display title for the bookmark. For link-type bookmarks, this will be overridden by the fetched page title if available.
+</ParamField>
+
+<ParamField path="url" type="string" optional>
+  The bookmark URL. Required for `link` type bookmarks, optional for other types.
+</ParamField>
+
+<ParamField path="type" type="'link' | 'color' | 'text'" default="link">
+  Type of bookmark to create:
+  - `link`: A standard URL bookmark with automatic metadata fetching
+  - `color`: A color swatch bookmark
+  - `text`: A text-only bookmark
+</ParamField>
+
+<ParamField path="color" type="string" optional>
+  Hex color code. Primarily used for `color` type bookmarks.
+</ParamField>
+
+<ParamField path="groupId" type="string" required>
+  ID of the group to add the bookmark to. The group must exist and belong to the authenticated user.
+</ParamField>
+
+### Input Schema
+
+```typescript
+{
+  title: string;
+  url?: string;
+  type?: 'link' | 'color' | 'text';
+  color?: string;
+  groupId: string;
+}
+```
+
+Defined in `lib/schema.ts:90`.
+
+## Response
+
+Returns the created bookmark object.
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the created bookmark
+</ResponseField>
+
+<ResponseField name="title" type="string" required>
+  The bookmark's title (may be auto-fetched from the URL)
+</ResponseField>
+
+<ResponseField name="url" type="string | null">
+  The normalized bookmark URL
+</ResponseField>
+
+<ResponseField name="favicon" type="string | null">
+  Auto-fetched favicon URL for link bookmarks
+</ResponseField>
+
+<ResponseField name="type" type="'link' | 'color' | 'text'" required>
+  The bookmark type
+</ResponseField>
+
+<ResponseField name="color" type="string | null">
+  The color value for color-type bookmarks
+</ResponseField>
+
+<ResponseField name="normalizedUrl" type="string | null">
+  Canonicalized URL used for duplicate detection
+</ResponseField>
+
+<ResponseField name="groupId" type="string" required>
+  ID of the group containing this bookmark
+</ResponseField>
+
+<ResponseField name="userId" type="string" required>
+  ID of the authenticated user
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date" required>
+  Creation timestamp
+</ResponseField>
+
+<ResponseField name="updatedAt" type="Date" required>
+  Last update timestamp
+</ResponseField>
+
+## Examples
+
+### Create a Link Bookmark
+
+```tsx
+import { orpc } from '@/lib/orpc';
+
+function CreateBookmarkButton() {
+  const createMutation = orpc.bookmark.create.useMutation();
+
+  const handleCreate = async () => {
+    const bookmark = await createMutation.mutateAsync({
+      title: 'Example Site',
+      url: 'https://example.com',
+      type: 'link',
+      groupId: 'clx123456',
+    });
+
+    console.log('Created:', bookmark.title);
+    // Title and favicon are automatically fetched
+  };
+
+  return (
+    <button onClick={handleCreate}>
+      Create Bookmark
+    </button>
+  );
+}
+```
+
+### Create a Color Bookmark
+
+```tsx
+import { client } from '@/lib/orpc';
+
+const colorBookmark = await client.bookmark.create({
+  title: 'Brand Blue',
+  type: 'color',
+  color: '#3B82F6',
+  groupId: 'clx123456',
+});
+```
+
+### Create a Text Bookmark
+
+```typescript
+import { serverClient } from '@/lib/orpc.server';
+
+const textBookmark = await serverClient.bookmark.create({
+  title: 'Important Note',
+  type: 'text',
+  groupId: 'clx123456',
+});
+```
+
+## Behavior
+
+### URL Normalization
+
+For link-type bookmarks, the URL is automatically normalized:
+
+- Removes tracking parameters
+- Standardizes protocol and domain
+- Creates a canonical version for duplicate detection
+
+See `lib/utils.ts` for `normalizeUrl()` and `canonicalizeUrl()` implementations.
+
+### Automatic Metadata Fetching
+
+When creating a link bookmark:
+
+1. The URL is normalized
+2. Page metadata is fetched in parallel (title, favicon)
+3. If successful, the title is updated with the page title
+4. The favicon URL is stored for display
+
+From `server/procedures/bookmarks.ts:53`:
+
+```typescript
+const [existing, metadata] = await Promise.all([
+  db.bookmark.findFirst({
+    where: {
+      userId: context.user.id,
+      groupId: input.groupId,
+      url: normalizedUrl,
+    },
+  }),
+  getUrlMetadata(normalizedUrl),
+]);
+
+if (metadata.title) {
+  title = metadata.title;
+}
+favicon = metadata.favicon;
+```
+
+### Duplicate Handling
+
+If a bookmark with the same normalized URL already exists in the same group:
+
+1. The existing bookmark is updated instead of creating a new one
+2. The title and favicon are refreshed from the latest metadata
+3. The `updatedAt` timestamp is updated
+4. The existing bookmark is returned
+
+From `server/procedures/bookmarks.ts:64`:
+
+```typescript
+if (existing) {
+  const bookmark = await db.bookmark.update({
+    where: { id: existing.id, userId: context.user.id },
+    data: {
+      title: metadata.title || existing.title,
+      favicon: metadata.favicon || existing.favicon,
+      updatedAt: new Date(),
+    },
+  });
+  return bookmark;
+}
+```
+
+## Errors
+
+<ResponseField name="NOT_FOUND" type="error">
+  The specified `groupId` does not exist or does not belong to the authenticated user.
+</ResponseField>
+
+<ResponseField name="UNAUTHORIZED" type="error">
+  User is not authenticated.
+</ResponseField>
+
+## Notes
+
+- Group ownership is verified before creating the bookmark (see `server/procedures/bookmarks.ts:18`)
+- Metadata fetching happens asynchronously and won't block bookmark creation if it fails
+- The normalized URL is used for duplicate detection within the same group
+- Color and text bookmarks don't trigger metadata fetching

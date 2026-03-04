@@ -1,0 +1,162 @@
+---
+title: 'How to Use'
+description: 'Learn all the ways to save bookmarks with the Minimal Chrome Extension'
+---
+
+The Minimal Chrome Extension offers multiple ways to save bookmarks, from quick toolbar clicks to powerful keyboard shortcuts.
+
+## Toolbar Click
+
+The fastest way to save a page is clicking the extension icon in your browser toolbar.
+
+<Steps>
+  <Step title="Navigate to a Page">
+    Open any webpage you want to save
+  </Step>
+  
+  <Step title="Click the Extension Icon">
+    Click the Minimal icon in your toolbar. The current page is instantly saved.
+  </Step>
+  
+  <Step title="Confirmation">
+    A notification appears confirming the bookmark was saved
+  </Step>
+</Steps>
+
+<Info>
+  The extension automatically extracts the page title and favicon. You can edit these later in your Minimal dashboard.
+</Info>
+
+## Context Menu
+
+Right-click context menus provide quick access to save functionality.
+
+### Save Current Page
+
+1. Right-click anywhere on a webpage
+2. Select **Save to Minimal** from the context menu
+3. The page is saved to your default group
+
+### Save a Link
+
+1. Right-click any link on a webpage
+2. Select **Save link to Minimal** from the context menu
+3. The linked URL is saved without navigating to it
+
+<Tip>
+  Saving links is perfect for building a reading list without opening dozens of tabs.
+</Tip>
+
+## Keyboard Shortcuts
+
+Keyboard shortcuts provide the fastest workflow for power users.
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `Cmd+Shift+K` (Mac)<br/>`Ctrl+Shift+K` (Windows/Linux) | Keep current tab | Save the active tab |
+| `Cmd+Shift+L` (Mac)<br/>`Ctrl+Shift+L` (Windows/Linux) | Keep all unsaved tabs | Save all open tabs in the current window |
+
+### Customize Keyboard Shortcuts
+
+You can customize these shortcuts to match your workflow:
+
+<Steps>
+  <Step title="Open Chrome Extensions">
+    Navigate to `chrome://extensions/` in Chrome
+  </Step>
+  
+  <Step title="Open Shortcuts Settings">
+    Click the menu icon (☰) in the top left and select "Keyboard shortcuts"
+  </Step>
+  
+  <Step title="Find Minimal Extension">
+    Scroll to the Minimal extension section
+  </Step>
+  
+  <Step title="Rebind Shortcuts">
+    Click on a shortcut field and press your desired key combination
+  </Step>
+</Steps>
+
+## Save All Tabs
+
+The "Keep all tabs" feature is perfect for research sessions or topic-based browsing.
+
+Using the keyboard shortcut `Cmd+Shift+L` (Mac) or `Ctrl+Shift+L` (Windows/Linux), you can save all open tabs in the current window at once.
+
+<Warning>
+  Only unsaved tabs are saved. If a tab's URL already exists in your bookmarks, it will be skipped.
+</Warning>
+
+## Destination Groups
+
+By default, manually saved bookmarks go to your oldest group (typically your first created group). 
+
+Auto-captured bookmarks from X/Twitter and browser bookmarks are automatically organized into special import groups:
+
+- **Imported - X**: For tweets bookmarked on X/Twitter
+- **Imported - Browser**: For bookmarks created through Chrome's native system
+
+These groups are created automatically on first use.
+
+## Deduplication Behavior
+
+The extension uses intelligent deduplication to prevent duplicate bookmarks:
+
+### Same URL Detection
+URLs are normalized before saving (trailing slashes removed, query parameters standardized). If you save the same URL multiple times, the extension recognizes it as a duplicate.
+
+### Reclassification
+When you save a URL that already exists:
+- The existing bookmark's metadata (title, favicon) is updated
+- The bookmark is moved to the new source's group based on timestamp and source priority
+- All existing tags, notes, and other metadata are preserved
+- A source history tracks all the ways you've captured this URL
+
+### Source Priority
+When multiple captures happen simultaneously, the following priority determines the destination group:
+1. Manual popup (toolbar click)
+2. Manual context menu
+3. Manual keyboard shortcut
+4. X/Twitter bookmark
+5. Browser bookmark
+
+## Viewing Service Worker Logs
+
+For debugging or understanding what the extension is doing:
+
+<Steps>
+  <Step title="Open Chrome Extensions">
+    Navigate to `chrome://extensions/`
+  </Step>
+  
+  <Step title="Find Minimal Extension">
+    Locate the Minimal extension card
+  </Step>
+  
+  <Step title="Open Service Worker">
+    Click "service worker" to open the background script console
+  </Step>
+  
+  <Step title="View Logs">
+    All save operations, errors, and auto-capture events are logged here
+  </Step>
+</Steps>
+
+## Extension Options
+
+To configure the extension:
+
+<Steps>
+  <Step title="Right-Click Extension Icon">
+    Right-click the Minimal icon in your toolbar
+  </Step>
+  
+  <Step title="Select Options">
+    Choose "Options" from the menu
+  </Step>
+  
+  <Step title="Configure Server URL">
+    Update the Server URL if you're self-hosting or developing locally. Default: `https://minimal.so`
+  </Step>
+</Steps>

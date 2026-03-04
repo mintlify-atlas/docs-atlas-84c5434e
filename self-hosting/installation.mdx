@@ -1,0 +1,372 @@
+---
+title: Installation
+description: Step-by-step guide to installing and deploying Minimal
+---
+
+This guide covers the complete installation process for self-hosting Minimal, from local development to production deployment.
+
+## Installation Methods
+
+Choose the installation method that best fits your needs:
+
+- **Local Development**: Run Minimal on your local machine for testing and development
+- **Production Deployment**: Deploy Minimal to a production server or platform
+- **Docker**: Run Minimal in a containerized environment (coming soon)
+
+## Local Development Installation
+
+<Steps>
+  <Step title="Install Runtime">
+    Minimal supports both Bun and Node.js. Choose one:
+
+    **Bun (Recommended)**
+    ```bash
+    curl -fsSL https://bun.sh/install | bash
+    ```
+
+    **Node.js**
+    ```bash
+    # Install Node.js 20+ from https://nodejs.org
+    # Or use nvm:
+    nvm install 20
+    nvm use 20
+    ```
+  </Step>
+
+  <Step title="Clone Repository">
+    ```bash
+    git clone https://github.com/yourusername/minimal.git
+    cd minimal
+    ```
+  </Step>
+
+  <Step title="Install Dependencies">
+    <CodeGroup>
+    ```bash Bun
+    bun install
+    ```
+
+    ```bash npm
+    npm install
+    ```
+
+    ```bash pnpm
+    pnpm install
+    ```
+
+    ```bash yarn
+    yarn install
+    ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Configure Environment">
+    Copy the example environment file and configure it:
+
+    ```bash
+    cp .env.example .env
+    ```
+
+    Minimal configuration for local development:
+
+    ```bash .env
+    DATABASE_URL="file:./dev.db"
+    BETTER_AUTH_SECRET="your-secret-key-here"
+    NEXT_PUBLIC_APP_URL="http://localhost:3000"
+    ```
+
+    <Note>
+    Generate a secure `BETTER_AUTH_SECRET` with:
+    ```bash
+    openssl rand -base64 32
+    ```
+    </Note>
+  </Step>
+
+  <Step title="Initialize Database">
+    Generate Prisma client and push schema to database:
+
+    <CodeGroup>
+    ```bash Bun
+    bun run db:generate
+    bun run db:push
+    ```
+
+    ```bash npm
+    npm run db:generate
+    npm run db:push
+    ```
+    </CodeGroup>
+
+    This will create a local SQLite database at `./dev.db`.
+  </Step>
+
+  <Step title="Start Development Server">
+    <CodeGroup>
+    ```bash Bun (Quick Start)
+    bun run dx
+    ```
+
+    ```bash Bun
+    bun run dev
+    ```
+
+    ```bash npm
+    npm run dev
+    ```
+    </CodeGroup>
+
+    The application will be available at `http://localhost:3000`.
+
+    <Note>
+    The `dx` command is a shortcut that runs `install`, `db:generate`, `db:push`, and `dev` in sequence.
+    </Note>
+  </Step>
+</Steps>
+
+## Production Installation
+
+<Warning>
+Production deployments require additional security considerations. Always use HTTPS and secure environment variables.
+</Warning>
+
+### Option 1: Platform Deployment (Vercel)
+
+<Steps>
+  <Step title="Prepare Repository">
+    Ensure your repository is pushed to GitHub, GitLab, or Bitbucket.
+  </Step>
+
+  <Step title="Deploy to Vercel">
+    1. Visit [vercel.com](https://vercel.com) and sign in
+    2. Click "New Project" and import your repository
+    3. Configure environment variables (see [Configuration](/self-hosting/configuration))
+    4. Deploy
+  </Step>
+
+  <Step title="Configure Database">
+    For production, use Turso instead of local SQLite:
+
+    ```bash
+    # Install Turso CLI
+    curl -sSfL https://get.tur.so/install.sh | bash
+
+    # Create database
+    turso db create minimal-production
+
+    # Get connection details
+    turso db show minimal-production
+    ```
+
+    Add to Vercel environment variables:
+    - `TURSO_DATABASE_URL`
+    - `TURSO_AUTH_TOKEN`
+  </Step>
+
+  <Step title="Run Migrations">
+    After first deployment, run database migrations:
+
+    ```bash
+    # Set environment variables locally
+    export TURSO_DATABASE_URL="your-url"
+    export TURSO_AUTH_TOKEN="your-token"
+
+    # Push schema
+    bunx prisma db push
+    ```
+  </Step>
+</Steps>
+
+### Option 2: VPS Deployment
+
+<Steps>
+  <Step title="Prepare Server">
+    Requirements:
+    - Ubuntu 22.04+ or similar Linux distribution
+    - 2GB+ RAM
+    - Node.js 20+ or Bun installed
+    - nginx or similar reverse proxy
+    - SSL certificate (Let's Encrypt recommended)
+  </Step>
+
+  <Step title="Clone and Install">
+    ```bash
+    cd /var/www
+    git clone https://github.com/yourusername/minimal.git
+    cd minimal
+    bun install
+    ```
+  </Step>
+
+  <Step title="Configure Environment">
+    ```bash
+    cp .env.example .env
+    nano .env
+    ```
+
+    Set production environment variables (see [Configuration](/self-hosting/configuration)).
+  </Step>
+
+  <Step title="Build Application">
+    ```bash
+    bun run build
+    ```
+  </Step>
+
+  <Step title="Set Up Process Manager">
+    Use PM2 to manage the application:
+
+    ```bash
+    npm install -g pm2
+    pm2 start "bun run start" --name minimal
+    pm2 save
+    pm2 startup
+    ```
+  </Step>
+
+  <Step title="Configure Reverse Proxy">
+    Example nginx configuration:
+
+    ```nginx /etc/nginx/sites-available/minimal
+    server {
+        listen 80;
+        server_name your-domain.com;
+
+        location / {
+            proxy_pass http://localhost:3000;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+    }
+    ```
+
+    Enable site and restart nginx:
+    ```bash
+    ln -s /etc/nginx/sites-available/minimal /etc/nginx/sites-enabled/
+    nginx -t
+    systemctl restart nginx
+    ```
+  </Step>
+
+  <Step title="Set Up SSL">
+    ```bash
+    apt install certbot python3-certbot-nginx
+    certbot --nginx -d your-domain.com
+    ```
+  </Step>
+</Steps>
+
+### Option 3: Docker (Coming Soon)
+
+Docker support is planned for a future release.
+
+## Database Setup
+
+After installation, you need to set up your database. See the [Database Setup](/self-hosting/database) guide for detailed instructions on:
+
+- Local SQLite configuration
+- Turso setup and migration
+- Database backup strategies
+- Schema management
+
+## Verification
+
+After installation, verify your deployment:
+
+<Steps>
+  <Step title="Check Application">
+    Visit your application URL and ensure the homepage loads.
+  </Step>
+
+  <Step title="Test Authentication">
+    Try creating an account to verify authentication is working.
+  </Step>
+
+  <Step title="Check Database">
+    Verify the database connection:
+
+    ```bash
+    bun run db:studio
+    ```
+
+    This opens Prisma Studio to view your database.
+  </Step>
+
+  <Step title="Monitor Logs">
+    Check application logs for errors:
+
+    <CodeGroup>
+    ```bash PM2
+    pm2 logs minimal
+    ```
+
+    ```bash Vercel
+    # Check logs in Vercel dashboard
+    ```
+
+    ```bash Development
+    # Logs appear in terminal
+    ```
+    </CodeGroup>
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### Build Failures
+
+If the build fails, check:
+
+1. **Node/Bun version**: Ensure you're using Node.js 20+ or latest Bun
+2. **Dependencies**: Delete `node_modules` and reinstall
+3. **Environment variables**: Verify all required variables are set
+
+### Database Connection Issues
+
+1. **Check URL format**: Ensure `DATABASE_URL` or `TURSO_DATABASE_URL` is correct
+2. **Verify permissions**: Ensure the application has write access to SQLite file location
+3. **Test connection**: Use `bun run db:studio` to verify database access
+
+### Runtime Errors
+
+1. **Missing environment variables**: Check all required variables are set
+2. **Port conflicts**: Ensure port 3000 is available or set custom `PORT`
+3. **Memory issues**: Increase available RAM for the process
+
+## Updating
+
+To update your installation:
+
+```bash
+# Pull latest changes
+git pull origin main
+
+# Install new dependencies
+bun install
+
+# Update database schema
+bun run db:generate
+bun run db:push
+
+# Rebuild application
+bun run build
+
+# Restart (PM2)
+pm2 restart minimal
+
+# Or redeploy on Vercel
+git push
+```
+
+<Warning>
+Always backup your database before updating to prevent data loss.
+</Warning>
+
+## Next Steps
+
+- [Configure environment variables](/self-hosting/configuration)
+- [Set up database](/self-hosting/database)
+- [Configure authentication](/self-hosting/authentication)

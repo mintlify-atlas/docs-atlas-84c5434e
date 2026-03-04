@@ -1,0 +1,215 @@
+---
+title: Delete Bookmark
+description: Delete a single bookmark by ID
+---
+
+## Endpoint
+
+```typescript
+client.bookmark.delete(input)
+```
+
+**Defined in:** `server/procedures/bookmarks.ts:121`
+
+## Authentication
+
+This endpoint requires authentication. See [Authentication](/api/authentication) for details.
+
+## Request
+
+<ParamField path="id" type="string" required>
+  ID of the bookmark to delete
+</ParamField>
+
+### Input Schema
+
+```typescript
+{
+  id: string;
+}
+```
+
+Defined in `lib/schema.ts:122`.
+
+## Response
+
+Returns a success confirmation object.
+
+<ResponseField name="success" type="boolean" required>
+  Always `true` when the deletion completes successfully
+</ResponseField>
+
+## Examples
+
+### Using React Query Mutation
+
+```tsx
+import { orpc } from '@/lib/orpc';
+
+function DeleteBookmarkButton({ bookmarkId }: { bookmarkId: string }) {
+  const deleteMutation = orpc.bookmark.delete.useMutation();
+
+  const handleDelete = async () => {
+    await deleteMutation.mutateAsync({ id: bookmarkId });
+    console.log('Bookmark deleted successfully');
+  };
+
+  return (
+    <button
+      onClick={handleDelete}
+      disabled={deleteMutation.isPending}
+    >
+      {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+    </button>
+  );
+}
+```
+
+### Using Direct Client Call
+
+```typescript
+import { client } from '@/lib/orpc';
+
+const result = await client.bookmark.delete({
+  id: 'clx123456',
+});
+
+if (result.success) {
+  console.log('Bookmark deleted');
+}
+```
+
+### Server-Side Deletion
+
+```tsx
+import { serverClient } from '@/lib/orpc.server';
+
+async function deleteBookmark(bookmarkId: string) {
+  const result = await serverClient.bookmark.delete({
+    id: bookmarkId,
+  });
+
+  return result.success;
+}
+```
+
+### With Optimistic Updates
+
+```tsx
+import { orpc } from '@/lib/orpc';
+import { useQueryClient } from '@tanstack/react-query';
+
+function BookmarkList() {
+  const queryClient = useQueryClient();
+  const { data: bookmarks } = orpc.bookmark.list.useQuery({});
+
+  const deleteMutation = orpc.bookmark.delete.useMutation({
+    onMutate: async (variables) => {
+      // Cancel outgoing refetches
+      await queryClient.cancelQueries({
+        queryKey: orpc.bookmark.list.getQueryKey({}),
+      });
+
+      // Snapshot previous value
+      const previous = queryClient.getQueryData(
+        orpc.bookmark.list.getQueryKey({})
+      );
+
+      // Optimistically remove bookmark
+      queryClient.setQueryData(
+        orpc.bookmark.list.getQueryKey({}),
+        (old: any[]) => old.filter(b => b.id !== variables.id)
+      );
+
+      return { previous };
+    },
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previous) {
+        queryClient.setQueryData(
+          orpc.bookmark.list.getQueryKey({}),
+          context.previous
+        );
+      }
+    },
+  });
+
+  return (
+    <div>
+      {bookmarks?.map(bookmark => (
+        <div key={bookmark.id}>
+          {bookmark.title}
+          <button onClick={() => deleteMutation.mutate({ id: bookmark.id })}>
+            Delete
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+## Implementation
+
+From `server/procedures/bookmarks.ts:121`:
+
+```typescript
+export const deleteBookmark = authed
+  .input(deleteByIdSchema)
+  .handler(async ({ context, input }) => {
+    await db.bookmark.deleteMany({
+      where: { id: input.id, userId: context.user.id },
+    });
+    return { success: true };
+  });
+```
+
+## Behavior
+
+### Safe Deletion
+
+The deletion is scoped to the authenticated user:
+
+```typescript
+where: { id: input.id, userId: context.user.id }
+```
+
+This ensures users can only delete their own bookmarks, even if they somehow obtain another user's bookmark ID.
+
+### Idempotent Operation
+
+The endpoint uses `deleteMany` instead of `delete`, which means:
+
+- If the bookmark doesn't exist, the operation succeeds silently
+- No error is thrown for non-existent IDs
+- Always returns `{ success: true }`
+
+This makes the operation idempotent - calling it multiple times with the same ID has the same effect as calling it once.
+
+### No Cascade Information
+
+The response only confirms the deletion was processed. It doesn't include:
+
+- Number of records deleted
+- Whether the bookmark existed
+- Related data that was deleted
+
+If you need to verify the bookmark existed before deletion, query it first.
+
+## Errors
+
+<ResponseField name="UNAUTHORIZED" type="error">
+  User is not authenticated.
+</ResponseField>
+
+## Related Endpoints
+
+- [Bulk Delete](/api/bookmarks/bulk-operations#bulk-delete) - Delete multiple bookmarks at once
+- [List Bookmarks](/api/bookmarks/list) - List bookmarks before deletion
+
+## Notes
+
+- Deletion is permanent and cannot be undone
+- The bookmark is immediately removed from the database
+- Related data (metadata, etc.) is handled according to database cascade rules
+- For deleting multiple bookmarks, use the [bulk delete endpoint](/api/bookmarks/bulk-operations#bulk-delete) for better performance

@@ -1,0 +1,172 @@
+---
+title: List Bookmarks
+description: Retrieve all bookmarks for the authenticated user, optionally filtered by group
+---
+
+## Endpoint
+
+```typescript
+client.bookmark.list(input)
+```
+
+**Defined in:** `server/procedures/bookmarks.ts:28`
+
+## Authentication
+
+This endpoint requires authentication. See [Authentication](/api/authentication) for details.
+
+## Request
+
+<ParamField path="groupId" type="string" optional>
+  Filter bookmarks by a specific group ID. If omitted, returns all bookmarks for the user.
+</ParamField>
+
+### Input Schema
+
+```typescript
+{
+  groupId?: string;
+}
+```
+
+Defined in `lib/schema.ts:118`.
+
+## Response
+
+Returns an array of bookmark objects ordered by `updatedAt` (most recent first).
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the bookmark
+</ResponseField>
+
+<ResponseField name="title" type="string" required>
+  Display title of the bookmark
+</ResponseField>
+
+<ResponseField name="url" type="string | null">
+  The bookmark URL (null for color/text type bookmarks)
+</ResponseField>
+
+<ResponseField name="favicon" type="string | null">
+  URL to the site's favicon (automatically fetched for link bookmarks)
+</ResponseField>
+
+<ResponseField name="type" type="'link' | 'color' | 'text'" required>
+  Type of bookmark
+</ResponseField>
+
+<ResponseField name="color" type="string | null">
+  Hex color code for color-type bookmarks
+</ResponseField>
+
+<ResponseField name="normalizedUrl" type="string | null">
+  Canonicalized version of the URL for duplicate detection
+</ResponseField>
+
+<ResponseField name="isPublic" type="boolean | null">
+  Whether the bookmark is publicly visible
+</ResponseField>
+
+<ResponseField name="groupId" type="string" required>
+  ID of the group this bookmark belongs to
+</ResponseField>
+
+<ResponseField name="userId" type="string" required>
+  ID of the user who owns this bookmark
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date" required>
+  Timestamp when the bookmark was created
+</ResponseField>
+
+<ResponseField name="updatedAt" type="Date" required>
+  Timestamp when the bookmark was last updated
+</ResponseField>
+
+## Examples
+
+### Using React Query (Client Component)
+
+```tsx
+import { orpc } from '@/lib/orpc';
+
+function BookmarkList({ groupId }: { groupId?: string }) {
+  const { data: bookmarks, isLoading } = orpc.bookmark.list.useQuery({
+    groupId,
+  });
+
+  if (isLoading) return <div>Loading...</div>;
+
+  return (
+    <div>
+      {bookmarks?.map(bookmark => (
+        <div key={bookmark.id}>
+          {bookmark.favicon && <img src={bookmark.favicon} alt="" />}
+          <a href={bookmark.url || '#'}>{bookmark.title}</a>
+        </div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Using Server Client (Server Component)
+
+```tsx
+import { serverClient } from '@/lib/orpc.server';
+
+async function BookmarksPage() {
+  // Get all bookmarks
+  const allBookmarks = await serverClient.bookmark.list({});
+
+  // Get bookmarks for a specific group
+  const groupBookmarks = await serverClient.bookmark.list({
+    groupId: 'clx123456',
+  });
+
+  return (
+    <div>
+      <h2>All Bookmarks ({allBookmarks.length})</h2>
+      {/* Render bookmarks */}
+    </div>
+  );
+}
+```
+
+### Direct Client Call
+
+```typescript
+import { client } from '@/lib/orpc';
+
+const bookmarks = await client.bookmark.list({
+  groupId: 'clx123456',
+});
+
+console.log(`Found ${bookmarks.length} bookmarks`);
+```
+
+## Implementation Details
+
+The procedure implementation (from `server/procedures/bookmarks.ts:28`):
+
+```typescript
+export const listBookmarks = authed
+  .input(listBookmarksInputSchema)
+  .handler(async ({ context, input }) => {
+    const bookmarks = await db.bookmark.findMany({
+      where: {
+        userId: context.user.id,
+        ...(input.groupId && { groupId: input.groupId }),
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+    return bookmarks;
+  });
+```
+
+## Notes
+
+- Results are automatically filtered by the authenticated user's ID
+- Bookmarks are ordered by most recently updated first
+- The `groupId` filter is optional and can be omitted to get all bookmarks
+- Returns an empty array if no bookmarks are found

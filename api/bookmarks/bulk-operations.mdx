@@ -1,0 +1,358 @@
+---
+title: Bulk Operations
+description: Perform bulk delete and move operations on multiple bookmarks
+---
+
+The bookmark API provides two bulk operations for efficiently managing multiple bookmarks at once.
+
+## Bulk Delete
+
+Delete multiple bookmarks in a single operation.
+
+### Endpoint
+
+```typescript
+client.bookmark.bulkDelete(input)
+```
+
+**Defined in:** `server/procedures/bookmarks.ts:207`
+
+### Authentication
+
+This endpoint requires authentication. See [Authentication](/api/authentication) for details.
+
+### Request
+
+<ParamField path="ids" type="string[]" required>
+  Array of bookmark IDs to delete. Must contain at least one ID.
+</ParamField>
+
+#### Input Schema
+
+```typescript
+{
+  ids: string[]; // min: 1
+}
+```
+
+Defined in `lib/schema.ts:126`.
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  Always `true` when the operation completes
+</ResponseField>
+
+<ResponseField name="count" type="number" required>
+  Number of bookmarks actually deleted
+</ResponseField>
+
+### Examples
+
+#### Delete Selected Bookmarks
+
+```tsx
+import { orpc } from '@/lib/orpc';
+
+function BulkDeleteButton({ selectedIds }: { selectedIds: string[] }) {
+  const bulkDeleteMutation = orpc.bookmark.bulkDelete.useMutation();
+
+  const handleBulkDelete = async () => {
+    const result = await bulkDeleteMutation.mutateAsync({
+      ids: selectedIds,
+    });
+
+    console.log(`Deleted ${result.count} bookmarks`);
+  };
+
+  return (
+    <button
+      onClick={handleBulkDelete}
+      disabled={selectedIds.length === 0 || bulkDeleteMutation.isPending}
+    >
+      Delete {selectedIds.length} bookmarks
+    </button>
+  );
+}
+```
+
+#### Delete with Confirmation
+
+```tsx
+import { client } from '@/lib/orpc';
+
+async function deleteMultipleBookmarks(bookmarkIds: string[]) {
+  if (bookmarkIds.length === 0) {
+    throw new Error('No bookmarks selected');
+  }
+
+  const confirmed = confirm(
+    `Delete ${bookmarkIds.length} bookmarks? This cannot be undone.`
+  );
+
+  if (!confirmed) return null;
+
+  const result = await client.bookmark.bulkDelete({
+    ids: bookmarkIds,
+  });
+
+  return result;
+}
+```
+
+### Implementation
+
+From `server/procedures/bookmarks.ts:207`:
+
+```typescript
+export const bulkDeleteBookmarks = authed
+  .input(bulkDeleteBookmarksSchema)
+  .handler(async ({ context, input }) => {
+    const result = await db.bookmark.deleteMany({
+      where: { id: { in: input.ids }, userId: context.user.id },
+    });
+    return { success: true, count: result.count };
+  });
+```
+
+---
+
+## Bulk Move
+
+Move multiple bookmarks to a different group in a single operation.
+
+### Endpoint
+
+```typescript
+client.bookmark.bulkMove(input)
+```
+
+**Defined in:** `server/procedures/bookmarks.ts:216`
+
+### Authentication
+
+This endpoint requires authentication. See [Authentication](/api/authentication) for details.
+
+### Request
+
+<ParamField path="ids" type="string[]" required>
+  Array of bookmark IDs to move. Must contain at least one ID.
+</ParamField>
+
+<ParamField path="targetGroupId" type="string" required>
+  ID of the destination group. The group must exist and belong to the authenticated user.
+</ParamField>
+
+#### Input Schema
+
+```typescript
+{
+  ids: string[]; // min: 1
+  targetGroupId: string;
+}
+```
+
+Defined in `lib/schema.ts:130`.
+
+### Response
+
+<ResponseField name="success" type="boolean" required>
+  Always `true` when the operation completes
+</ResponseField>
+
+<ResponseField name="count" type="number" required>
+  Number of bookmarks actually moved
+</ResponseField>
+
+### Examples
+
+#### Move Selected Bookmarks
+
+```tsx
+import { orpc } from '@/lib/orpc';
+
+function MoveBookmarksButton({
+  selectedIds,
+  targetGroupId
+}: {
+  selectedIds: string[];
+  targetGroupId: string;
+}) {
+  const bulkMoveMutation = orpc.bookmark.bulkMove.useMutation();
+
+  const handleMove = async () => {
+    const result = await bulkMoveMutation.mutateAsync({
+      ids: selectedIds,
+      targetGroupId,
+    });
+
+    console.log(`Moved ${result.count} bookmarks`);
+  };
+
+  return (
+    <button onClick={handleMove}>
+      Move to group
+    </button>
+  );
+}
+```
+
+#### Move with Group Selection
+
+```tsx
+import { client } from '@/lib/orpc';
+
+async function moveBookmarksToGroup(
+  bookmarkIds: string[],
+  targetGroupId: string
+) {
+  const result = await client.bookmark.bulkMove({
+    ids: bookmarkIds,
+    targetGroupId,
+  });
+
+  return {
+    movedCount: result.count,
+    allMoved: result.count === bookmarkIds.length,
+  };
+}
+```
+
+#### Organize Bookmarks
+
+```tsx
+import { serverClient } from '@/lib/orpc.server';
+
+async function organizeBookmarks(
+  bookmarkIds: string[],
+  newGroupId: string
+) {
+  // Move bookmarks to new group
+  const result = await serverClient.bookmark.bulkMove({
+    ids: bookmarkIds,
+    targetGroupId: newGroupId,
+  });
+
+  // Note: isPublic is automatically reset to null
+  console.log(`Organized ${result.count} bookmarks`);
+
+  return result;
+}
+```
+
+### Implementation
+
+From `server/procedures/bookmarks.ts:216`:
+
+```typescript
+export const bulkMoveBookmarks = authed
+  .input(bulkMoveBookmarksSchema)
+  .handler(async ({ context, input }) => {
+    await assertGroupOwnership(input.targetGroupId, context.user.id);
+    const result = await db.bookmark.updateMany({
+      where: { id: { in: input.ids }, userId: context.user.id },
+      data: {
+        groupId: input.targetGroupId,
+        isPublic: null,
+        updatedAt: new Date(),
+      },
+    });
+    return { success: true, count: result.count };
+  });
+```
+
+### Behavior
+
+#### Group Ownership Verification
+
+The target group must exist and belong to the authenticated user:
+
+```typescript
+await assertGroupOwnership(input.targetGroupId, context.user.id);
+```
+
+If the group is invalid, a `NOT_FOUND` error is thrown.
+
+#### Visibility Reset
+
+When bookmarks are moved to a different group, their `isPublic` status is automatically reset to `null`:
+
+```typescript
+data: {
+  groupId: input.targetGroupId,
+  isPublic: null, // Reset visibility
+  updatedAt: new Date(),
+}
+```
+
+This prevents public/private settings from carrying over between groups.
+
+#### Timestamp Update
+
+The `updatedAt` timestamp is automatically updated for all moved bookmarks.
+
+---
+
+## Common Behaviors
+
+### User Scoping
+
+Both operations automatically filter to only affect the authenticated user's bookmarks:
+
+```typescript
+where: { id: { in: input.ids }, userId: context.user.id }
+```
+
+Bookmarks belonging to other users are silently ignored, even if their IDs are included.
+
+### Partial Success
+
+The `count` field in the response indicates how many bookmarks were actually affected:
+
+```typescript
+if (result.count < bookmarkIds.length) {
+  console.log(`Only ${result.count} of ${bookmarkIds.length} bookmarks were processed`);
+}
+```
+
+This can happen if:
+- Some IDs don't exist
+- Some IDs belong to other users
+- Some bookmarks were already deleted
+
+### Validation
+
+Both operations require at least one ID:
+
+```typescript
+ids: z.array(z.string()).min(1)
+```
+
+Passing an empty array will result in a validation error.
+
+## Errors
+
+<ResponseField name="NOT_FOUND" type="error">
+  For bulk move: The target group doesn't exist or doesn't belong to the authenticated user.
+</ResponseField>
+
+<ResponseField name="UNAUTHORIZED" type="error">
+  User is not authenticated.
+</ResponseField>
+
+<ResponseField name="VALIDATION_ERROR" type="error">
+  The `ids` array is empty or contains invalid data.
+</ResponseField>
+
+## Performance Considerations
+
+- Both operations use `updateMany`/`deleteMany` for efficient batch processing
+- More performant than calling individual delete/update endpoints in a loop
+- Recommended for operations affecting more than 3-5 bookmarks
+- No strict limit on the number of IDs, but consider chunking very large operations (1000+)
+
+## Related Endpoints
+
+- [Delete Bookmark](/api/bookmarks/delete) - Delete a single bookmark
+- [Update Bookmark](/api/bookmarks/update) - Update a single bookmark
+- [List Bookmarks](/api/bookmarks/list) - List bookmarks to get IDs for bulk operations

@@ -1,0 +1,125 @@
+---
+title: API Overview
+description: Introduction to Minimal's oRPC API architecture and usage
+---
+
+## Architecture
+
+Minimal uses [oRPC](https://orpc.io/) - a modern, type-safe RPC framework built on top of React Server Components and Next.js. The API provides full end-to-end type safety between the server and client without code generation.
+
+### Key Features
+
+- **Type-safe**: Full TypeScript support with inferred types across client and server
+- **Session-based authentication**: Powered by Better Auth
+- **Automatic validation**: Request/response validation using Zod schemas
+- **React Query integration**: Built-in React Query hooks for data fetching and mutations
+- **Server and client usage**: Use from both server components and client components
+
+## Router Structure
+
+The API is organized into the following namespaces:
+
+```typescript
+{
+  bookmark: {
+    list, create, update, delete, refetch,
+    bulkDelete, bulkMove, setVisibility, bulkSetVisibility
+  },
+  group: {
+    list, create, update, delete, setVisibility
+  },
+  profile: {
+    get, update, checkUsername
+  },
+  public: {
+    getProfile
+  }
+}
+```
+
+See `server/router.ts:25` for the complete router definition.
+
+## Client Usage
+
+### From Client Components
+
+Use the React Query integration for automatic caching, revalidation, and optimistic updates:
+
+```tsx
+import { orpc } from '@/lib/orpc';
+
+function BookmarkList() {
+  const { data: bookmarks } = orpc.bookmark.list.useQuery({
+    groupId: 'group-id'
+  });
+
+  const createMutation = orpc.bookmark.create.useMutation();
+
+  return (
+    <button onClick={() => createMutation.mutate({
+      title: 'My Bookmark',
+      url: 'https://example.com',
+      type: 'link',
+      groupId: 'group-id'
+    })}>
+      Create Bookmark
+    </button>
+  );
+}
+```
+
+### From Server Components
+
+Use the server client for direct procedure calls:
+
+```tsx
+import { serverClient } from '@/lib/orpc.server';
+
+async function BookmarksPage() {
+  const bookmarks = await serverClient.bookmark.list({});
+
+  return (
+    <div>
+      {bookmarks.map(bookmark => (
+        <div key={bookmark.id}>{bookmark.title}</div>
+      ))}
+    </div>
+  );
+}
+```
+
+### Direct Client Calls
+
+You can also use the raw client without React Query:
+
+```typescript
+import { client } from '@/lib/orpc';
+
+const bookmarks = await client.bookmark.list({ groupId: 'group-id' });
+```
+
+## Error Handling
+
+The API uses `ORPCError` for standardized error responses:
+
+```typescript
+import { ORPCError } from '@orpc/server';
+
+// Common error codes:
+// - UNAUTHORIZED: User is not authenticated
+// - NOT_FOUND: Resource not found
+// - FORBIDDEN: User doesn't have permission
+```
+
+Errors are automatically thrown and can be caught in try/catch blocks or handled via React Query's error states.
+
+## Request/Response Flow
+
+1. **Client request** → oRPC client serializes the input
+2. **Validation** → Zod schema validates the request against the input schema
+3. **Authentication** → Session middleware checks user authentication (for authed procedures)
+4. **Handler execution** → Procedure handler processes the request
+5. **Response validation** → Output is validated (if schema defined)
+6. **Client receives** → Type-safe response returned to client
+
+All procedures are defined in `server/procedures/` and registered in `server/router.ts`.

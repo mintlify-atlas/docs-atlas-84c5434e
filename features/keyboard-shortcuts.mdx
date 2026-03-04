@@ -1,0 +1,277 @@
+---
+title: Keyboard Shortcuts
+description: Complete reference for all keyboard shortcuts in Minimal
+---
+
+Minimal is designed for keyboard-first productivity. Master these shortcuts to manage bookmarks faster.
+
+## Global Shortcuts
+
+These shortcuts work throughout the application:
+
+| Shortcut | Action | Context |
+|----------|--------|--------|
+| `↑` | Navigate up | Move selection to previous bookmark |
+| `↓` | Navigate down | Move selection to next bookmark |
+| `Enter` | Open bookmark | Opens URL or copies text/color |
+| `Escape` | Exit mode | Exit selection mode or cancel editing |
+
+### Arrow Navigation
+
+Navigate through bookmarks without touching the mouse:
+
+- `ArrowDown` - Move selection down one bookmark
+- `ArrowUp` - Move selection up one bookmark
+- Selection wraps at the top and bottom of the list
+- Visual highlight shows the currently selected bookmark
+
+```typescript
+if (e.key === "ArrowDown") {
+  e.preventDefault();
+  setSelectedIndex((prev) => Math.min(prev + 1, bookmarks.length - 1));
+}
+if (e.key === "ArrowUp") {
+  e.preventDefault();
+  setSelectedIndex((prev) => Math.max(prev - 1, -1));
+}
+```
+
+## Bookmark Actions
+
+These shortcuts work when a bookmark is selected or hovered:
+
+| Shortcut | Action | Details |
+|----------|--------|--------|
+| `⌘C` | Copy | Copies URL, color value, or text to clipboard |
+| `⌘E` | Rename | Start editing the bookmark title |
+| `⌘⌫` | Delete | Permanently delete the bookmark |
+| `⌘Enter` | Open | Opens the bookmark (shown as hint on hover) |
+
+<Note>
+On Windows and Linux, use `Ctrl` instead of `⌘` (Command).
+</Note>
+
+### Copy Shortcut
+
+The `⌘C` shortcut intelligently copies the right content:
+
+```typescript
+if ((e.metaKey || e.ctrlKey) && e.key === "c") {
+  e.preventDefault();
+  const textToCopy = activeBookmark.url || 
+                     activeBookmark.color || 
+                     activeBookmark.title;
+  navigator.clipboard.writeText(textToCopy ?? "");
+}
+```
+
+### Rename Shortcut
+
+Quickly edit bookmark titles:
+
+1. Select or hover over a bookmark
+2. Press `⌘E`
+3. Edit the title inline
+4. Press `Enter` to save or `Escape` to cancel
+
+### Delete Shortcut
+
+Instantly remove bookmarks:
+
+- Press `⌘⌫` (Command + Delete/Backspace)
+- No confirmation dialog - be careful!
+- Use selection mode for bulk deletion with confirmation
+
+## Selection Mode
+
+When in selection mode (selecting multiple bookmarks):
+
+| Shortcut | Action | Details |
+|----------|--------|--------|
+| `Space` | Toggle selection | Select/deselect the focused bookmark |
+| `⌘A` | Select all | Select all bookmarks in current group |
+| `Escape` | Exit | Exit selection mode and clear selections |
+
+### Space to Select
+
+While in selection mode:
+
+```typescript
+if (e.key === " " && inSelectionMode) {
+  e.preventDefault();
+  handleToggleSelection(activeBookmark.id);
+}
+```
+
+### Select All
+
+Quickly select every bookmark:
+
+```typescript
+if ((e.metaKey || e.ctrlKey) && e.key === "a" && inSelectionMode) {
+  e.preventDefault();
+  handleSelectAll(); // Selects all filtered bookmarks
+}
+```
+
+## Editing Shortcuts
+
+When editing a bookmark title:
+
+| Shortcut | Action | Details |
+|----------|--------|--------|
+| `Enter` | Save | Saves the new title and exits edit mode |
+| `Escape` | Cancel | Discards changes and exits edit mode |
+
+```typescript
+onKeyDown={(e) => {
+  if (e.key === "Enter") handleFinishRename(bookmark.id);
+  if (e.key === "Escape") {
+    onFinishRename();
+    setEditValue("");
+  }
+}}
+```
+
+## Context Menu Hints
+
+Keyboard shortcuts are displayed in context menus:
+
+- Right-click any bookmark to see available actions
+- Shortcuts appear on the right side of each menu item
+- Visual `Kbd` components show the exact keys to press
+
+```tsx
+<ContextMenuItem>
+  <IconCopy className="mr-2 h-4 w-4" />
+  <span>Copy</span>
+  <KbdGroup className="ml-auto">
+    <Kbd>⌘</Kbd>
+    <Kbd>C</Kbd>
+  </KbdGroup>
+</ContextMenuItem>
+```
+
+## Hover Hints
+
+When you hover over a bookmark, `⌘Enter` is displayed as a hint:
+
+```tsx
+{(selectedIndex === index || hoveredIndex === index) && !renamingId ? (
+  <KbdGroup>
+    <Kbd>⌘</Kbd>
+    <Kbd>Enter</Kbd>
+  </KbdGroup>
+) : null}
+```
+
+## Focus Management
+
+Shortcuts respect input focus:
+
+- When the search input is focused, only `⌘` shortcuts work
+- Arrow keys navigate bookmarks only when input is not focused
+- This prevents interference with normal typing
+
+```typescript
+if (document.activeElement === inputRef.current) {
+  return; // Don't handle shortcuts when input is focused
+}
+```
+
+## Active Element Detection
+
+Shortcuts use smart detection for the active bookmark:
+
+```typescript
+const activeIndex = hoveredIndex >= 0 
+  ? hoveredIndex 
+  : selectedIndex;
+```
+
+This means shortcuts work for:
+- The bookmark you're hovering over (mouse)
+- The bookmark you've navigated to (keyboard)
+
+## Shortcut Cheat Sheet
+
+<AccordionGroup>
+  <Accordion title="Navigation" icon="arrows-up-down">
+    - `↑/↓` - Navigate bookmarks
+    - `Enter` - Open bookmark
+    - Click anywhere to deselect
+  </Accordion>
+  
+  <Accordion title="Quick Actions" icon="bolt">
+    - `⌘C` - Copy
+    - `⌘E` - Rename
+    - `⌘⌫` - Delete
+    - `⌘Enter` - Open
+  </Accordion>
+  
+  <Accordion title="Bulk Operations" icon="layer-group">
+    - Right-click → "Select Multiple" to enter selection mode
+    - `Space` - Toggle selection
+    - `⌘A` - Select all
+    - `Escape` - Exit selection mode
+  </Accordion>
+  
+  <Accordion title="Editing" icon="pen">
+    - `⌘E` or right-click → "Rename"
+    - Type new title
+    - `Enter` - Save
+    - `Escape` - Cancel
+  </Accordion>
+</AccordionGroup>
+
+## Analytics
+
+Keyboard shortcut usage is tracked:
+
+```typescript
+posthog.capture("keyboard_shortcut_used", { 
+  shortcut: "cmd+c" 
+});
+```
+
+This helps improve the product based on how users interact with it.
+
+## Platform Differences
+
+### macOS
+- Use `⌘` (Command) key for all shortcuts
+- Delete key is `⌫` (Backspace)
+- All shortcuts use `e.metaKey`
+
+### Windows/Linux
+- Use `Ctrl` instead of `⌘`
+- Delete key is `Delete` or `Backspace`
+- All shortcuts use `e.ctrlKey`
+
+### Detection
+
+```typescript
+if ((e.metaKey || e.ctrlKey) && e.key === "c") {
+  // Works on both macOS and Windows/Linux
+}
+```
+
+## Tips for Power Users
+
+<Steps>
+  <Step title="Never Touch the Mouse">
+    Use arrow keys to navigate, Enter to open, and ⌘C to copy. You can manage bookmarks entirely from the keyboard.
+  </Step>
+  
+  <Step title="Rapid Deletion">
+    Navigate with arrows, press ⌘⌫ to delete. Repeat for multiple items. Much faster than right-clicking.
+  </Step>
+  
+  <Step title="Bulk Operations">
+    Right-click → Select Multiple, then use Space to toggle selections as you navigate with arrows.
+  </Step>
+  
+  <Step title="Quick Editing">
+    Hover and press ⌘E to instantly edit. Press Enter to save. No clicks needed.
+  </Step>
+</Steps>

@@ -1,0 +1,69 @@
+---
+title: List Groups
+description: Retrieve all bookmark groups for the authenticated user
+---
+
+## Endpoint
+
+```
+group.list
+```
+
+Returns all groups for the authenticated user, ordered by creation date (oldest first), with bookmark counts.
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Request
+
+No input parameters required.
+
+## Response
+
+Returns an array of group objects.
+
+<ResponseField name="id" type="string" required>
+  Unique identifier for the group
+</ResponseField>
+
+<ResponseField name="name" type="string" required>
+  Group name
+</ResponseField>
+
+<ResponseField name="color" type="string" required>
+  Hex color code for the group
+</ResponseField>
+
+<ResponseField name="isPublic" type="boolean">
+  Whether the group is publicly visible
+</ResponseField>
+
+<ResponseField name="bookmarkCount" type="number">
+  Number of bookmarks in the group
+</ResponseField>
+
+## Example
+
+```typescript
+import { client } from '@/lib/client';
+
+const groups = await client.group.list();
+
+console.log(groups);
+// [
+//   {
+//     id: "grp_123",
+//     name: "Development",
+//     color: "#3b82f6",
+//     isPublic: false,
+//     bookmarkCount: 42
+//   },
+//   ...
+// ]
+```
+
+## Source
+
+- Implementation: `server/procedures/bookmarks.ts:130`
+- Router: `server/router.ts:38`

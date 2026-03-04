@@ -1,0 +1,74 @@
+---
+title: 'Chrome Extension Overview'
+description: 'Save any page or link to your Minimal bookmarks with one click'
+---
+
+The Minimal Chrome Extension provides seamless bookmark management directly from your browser. Save pages instantly, capture tweets, and sync your browser bookmarks automatically.
+
+## Key Features
+
+### One-Click Saving
+Click the extension icon to instantly save the current page to your Minimal bookmarks. A confirmation notification appears when the save completes.
+
+### Multiple Save Methods
+- **Toolbar Click**: Save the active tab with a single click
+- **Context Menu**: Right-click anywhere to save the page, or right-click a link to save it
+- **Keyboard Shortcuts**: Fast keyboard-driven workflows for power users
+- **Auto-Capture**: Automatic syncing from X/Twitter bookmarks and browser bookmarks
+
+### Smart Organization
+Bookmarks from different sources are automatically organized into groups:
+- **Imported - X**: Tweets you bookmark on X/Twitter
+- **Imported - Browser**: Bookmarks created through Chrome's native bookmark system
+- Manual saves go to your default group or a group of your choice
+
+### Intelligent Deduplication
+All save operations use normalized URLs as the deduplication key. If you save the same URL from multiple sources, the existing bookmark is moved to the latest source's group while preserving all metadata, tags, and notes.
+
+## Permissions
+
+The extension requests the following permissions:
+
+| Permission | Purpose |
+|------------|----------|
+| `activeTab` | Access active tab URL and title for saving |
+| `bookmarks` | Listen for new browser bookmarks to enable auto-sync |
+| `contextMenus` | Add right-click menu items for saving pages and links |
+| `storage` | Persist server URL settings |
+| `tabs` | Query all tabs in the current window (for "Keep all tabs" feature) |
+| `notifications` | Show save confirmation feedback |
+
+### Host Permissions
+
+The extension requires access to:
+- `https://minimal.so/*` - Connect to the Minimal server
+- `http://localhost:3000/*` - Connect to local development server
+- `*://x.com/*` and `*://twitter.com/*` - Enable X/Twitter bookmark auto-capture
+
+## Security
+
+The extension API validates that all requests come from the configured extension ID only. This prevents unauthorized third parties from making requests to the bookmark API on behalf of logged-in users.
+
+## Configuration
+
+To configure the extension:
+
+<Steps>
+  <Step title="Open Options">
+    Right-click the extension icon and select "Options"
+  </Step>
+  <Step title="Set Server URL">
+    Change the Server URL if you're self-hosting or developing locally. The default is `https://minimal.so`
+  </Step>
+</Steps>
+
+## Reliability Notes
+
+The extension operates on a best-effort basis:
+
+- No persistent retry queue for failed saves
+- No failure notifications for background sync errors
+- Service worker restarts may drop in-flight events
+- Transient failures and offline states may cause missed saves
+
+Errors are logged to the service worker console for debugging.

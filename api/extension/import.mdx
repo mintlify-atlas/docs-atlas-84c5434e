@@ -1,0 +1,230 @@
+---
+title: Bulk Import Bookmarks
+description: Import bookmarks in bulk from browser or other sources
+---
+
+## Endpoint
+
+```
+POST /api/extension/import
+```
+
+Bulk imports bookmarks from browser exports or other sources. Handles deduplication, validation, and batched inserts.
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Headers
+
+<ParamField name="Origin" type="string" required>
+  Must be an allowed extension or web origin
+</ParamField>
+
+<ParamField name="Content-Type" type="string" required>
+  Must be `application/json`
+</ParamField>
+
+## Request Body
+
+<ParamField name="bookmarks" type="array" required>
+  Array of bookmark objects to import (max 2,000)
+</ParamField>
+
+<ParamField name="bookmarks[].title" type="string" required>
+  Bookmark title
+</ParamField>
+
+<ParamField name="bookmarks[].url" type="string" required>
+  Bookmark URL
+</ParamField>
+
+## Response
+
+<ResponseField name="success" type="boolean" required>
+  Always `true` on success
+</ResponseField>
+
+<ResponseField name="groupId" type="string" required>
+  ID of the group where bookmarks were imported
+</ResponseField>
+
+<ResponseField name="groupName" type="string" required>
+  Name of the import group ("Imported - Browser")
+</ResponseField>
+
+<ResponseField name="importedCount" type="number" required>
+  Number of bookmarks successfully imported
+</ResponseField>
+
+<ResponseField name="skippedCount" type="number" required>
+  Number of bookmarks skipped (duplicates or errors)
+</ResponseField>
+
+<ResponseField name="truncated" type="boolean" required>
+  Whether the input was truncated due to exceeding the 2,000 limit
+</ResponseField>
+
+<ResponseField name="limit" type="number" required>
+  Maximum number of bookmarks allowed (2,000)
+</ResponseField>
+
+<ResponseField name="errorSummary" type="object">
+  Optional breakdown of errors encountered
+</ResponseField>
+
+<ResponseField name="errorSummary.invalidUrl" type="number">
+  Number of bookmarks with invalid URLs
+</ResponseField>
+
+<ResponseField name="errorSummary.duplicateInBatch" type="number">
+  Number of duplicate URLs within the import batch
+</ResponseField>
+
+<ResponseField name="errorSummary.duplicateInGroup" type="number">
+  Number of URLs already in the import group
+</ResponseField>
+
+<ResponseField name="errorSummary.chunkInsertFailed" type="number">
+  Number of bookmarks that failed to insert
+</ResponseField>
+
+## Example
+
+```javascript
+const response = await fetch('https://minimal.to/api/extension/import', {
+  method: 'POST',
+  credentials: 'include',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    bookmarks: [
+      { title: 'Example Site', url: 'https://example.com' },
+      { title: 'GitHub', url: 'https://github.com' },
+      { title: 'Stack Overflow', url: 'https://stackoverflow.com' },
+      // ... up to 2,000 bookmarks
+    ]
+  })
+});
+
+const data = await response.json();
+console.log(data);
+// {
+//   success: true,
+//   groupId: "grp_123",
+//   groupName: "Imported - Browser",
+//   importedCount: 3,
+//   skippedCount: 0,
+//   truncated: false,
+//   limit: 2000
+// }
+```
+
+## Behavior
+
+### Import Limits
+
+- Maximum 2,000 bookmarks per request
+- Requests exceeding 2,000 bookmarks are truncated
+- Bookmarks are inserted in chunks of 500 for performance
+
+### Destination Group
+
+All imported bookmarks go to a group named "Imported - Browser":
+- Created automatically if it doesn't exist
+- Uses color `#6366f1`
+- Reused for subsequent imports
+
+### Deduplication
+
+**Within the import batch:**
+- URLs are normalized before comparison
+- Duplicate URLs in the same batch are skipped
+- Only the first occurrence is imported
+
+**Against existing bookmarks:**
+- URLs already in the "Imported - Browser" group are skipped
+- No cross-group duplicate detection
+
+### URL Validation
+
+URLs are validated and normalized:
+- Must be valid HTTP or HTTPS URLs
+- Non-HTTP(S) protocols are rejected
+- Invalid URLs are counted in `errorSummary.invalidUrl`
+
+### Error Handling
+
+- Individual bookmark failures don't abort the entire import
+- Chunk insert failures are logged and counted
+- The response includes a detailed error summary
+
+## Schema
+
+```typescript
+const importBookmarkSchema = z.object({
+  title: z.string(),
+  url: z.string(),
+});
+
+const importRequestSchema = z.object({
+  bookmarks: z.array(importBookmarkSchema),
+});
+```
+
+## Error Responses
+
+```json
+// 401 Unauthorized
+{
+  "error": "Unauthorized",
+  "message": "Please log in to import bookmarks"
+}
+
+// 400 Bad Request
+{
+  "error": "Bad Request",
+  "message": "Invalid payload. Expected { bookmarks: Array<{ title, url }> }"
+}
+
+// 403 Forbidden
+{
+  "error": "Forbidden",
+  "message": "Origin not allowed"
+}
+
+// 500 Server Error
+{
+  "error": "Server Error",
+  "message": "Failed to import bookmarks"
+}
+```
+
+## Performance
+
+- Batched inserts (500 bookmarks per chunk) for optimal database performance
+- Single query to fetch existing bookmarks in the group
+- URL normalization uses in-memory Set for O(1) deduplication
+- Average import time logged for monitoring
+
+## Use Cases
+
+- Import bookmarks from browser HTML export
+- Migrate from another bookmark service
+- Bulk add URLs from a reading list
+- Restore bookmarks from backup
+
+## Constants
+
+```typescript
+const IMPORT_LIMIT = 2000;        // Max bookmarks per request
+const CHUNK_SIZE = 500;           // Bookmarks per database insert
+const IMPORTED_GROUP_NAME = "Imported - Browser";
+const IMPORTED_GROUP_COLOR = "#6366f1";
+```
+
+## Source
+
+- Implementation: `app/api/extension/import/route.ts:33`
+- Schema: `route.ts:18-25`

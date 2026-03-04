@@ -1,0 +1,76 @@
+---
+title: Get Profile
+description: Retrieve the authenticated user's profile information
+---
+
+## Endpoint
+
+```
+profile.get
+```
+
+Retrieves the profile information for the currently authenticated user.
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Request
+
+No input parameters required.
+
+## Response
+
+Returns the user's profile data.
+
+<ResponseField name="image" type="string | null">
+  Profile image URL
+</ResponseField>
+
+<ResponseField name="username" type="string | null">
+  User's username (lowercase, unique)
+</ResponseField>
+
+<ResponseField name="bio" type="string | null">
+  User's bio (max 160 characters)
+</ResponseField>
+
+<ResponseField name="github" type="string | null">
+  GitHub username (max 39 characters)
+</ResponseField>
+
+<ResponseField name="twitter" type="string | null">
+  Twitter/X handle (max 15 characters)
+</ResponseField>
+
+<ResponseField name="website" type="string | null">
+  Personal website URL
+</ResponseField>
+
+<ResponseField name="isProfilePublic" type="boolean">
+  Whether the profile is publicly visible
+</ResponseField>
+
+## Example
+
+```typescript
+import { client } from '@/lib/client';
+
+const profile = await client.profile.get();
+
+console.log(profile);
+// {
+//   image: "https://example.com/avatar.jpg",
+//   username: "johndoe",
+//   bio: "Software developer and bookmark enthusiast",
+//   github: "johndoe",
+//   twitter: "johndoe",
+//   website: "https://johndoe.com",
+//   isProfilePublic: true
+// }
+```
+
+## Source
+
+- Implementation: `server/procedures/profile.ts:7`
+- Router: `server/router.ts:45`

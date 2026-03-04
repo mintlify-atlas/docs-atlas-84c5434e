@@ -1,0 +1,228 @@
+---
+title: 'Auto-Capture Features'
+description: 'Automatically sync bookmarks from X/Twitter and your browser'
+---
+
+The Minimal Chrome Extension includes powerful auto-capture features that automatically sync bookmarks from external sources without manual intervention.
+
+## X/Twitter Bookmark Capture
+
+When you bookmark a tweet on X/Twitter, the extension automatically saves it to Minimal.
+
+### How It Works
+
+1. **Bookmark a Tweet**: Use X/Twitter's native bookmark button on any tweet
+2. **Automatic Detection**: The extension's content script detects the bookmark action
+3. **Save to Minimal**: The tweet's canonical URL is saved to your **Imported - X** group
+4. **Confirmation Toast**: A rate-limited toast confirms the save
+
+<Info>
+  The extension only captures actual tweets (URLs matching `/user/status/{id}`). Bookmarking profiles, lists, search pages, settings, or spaces is ignored.
+</Info>
+
+### Captured Tweet Format
+
+The extension saves the canonical tweet URL, which looks like:
+```
+https://x.com/username/status/1234567890
+```
+
+This ensures consistent URLs regardless of how you accessed the tweet (timeline, search, profile, etc.).
+
+### Import Group
+
+All captured tweets are saved to a group named **Imported - X**. This group is automatically created on first use with a gray color (`#6b7280`).
+
+### Rate-Limited Notifications
+
+To avoid notification spam when bookmarking multiple tweets:
+- Individual saves show a confirmation toast
+- Burst events are collapsed into aggregate messages
+- Rate limiting prevents UI clutter during batch bookmarking
+
+### Permissions Required
+
+X/Twitter capture requires:
+- Host permissions for `*://x.com/*` and `*://twitter.com/*`
+- Content script injection at `document_idle`
+
+## Browser Bookmark Sync
+
+When you create a bookmark using Chrome's native bookmark system, the extension automatically syncs it to Minimal.
+
+### How It Works
+
+1. **Create a Browser Bookmark**: Use Chrome's bookmark button (⭐) or `Cmd/Ctrl+D`
+2. **Automatic Detection**: The extension listens for the `chrome.bookmarks.onCreated` event
+3. **Save to Minimal**: The bookmark is saved to your **Imported - Browser** group
+4. **Silent Sync**: No toast or notification (silent background sync)
+
+<Warning>
+  Only **new** bookmarks created after the extension is installed are synced. Existing browser bookmarks are not backfilled.
+</Warning>
+
+### Import Group
+
+All synced browser bookmarks are saved to a group named **Imported - Browser**. This group is automatically created on first use with an indigo color (`#6366f1`).
+
+### Bulk Import
+
+For importing large numbers of existing browser bookmarks, use the bulk import API:
+
+```javascript
+// POST /api/extension/import
+{
+  "bookmarks": [
+    { "title": "Example", "url": "https://example.com" },
+    { "title": "Another", "url": "https://another.com" }
+  ]
+}
+```
+
+**Import Limits**:
+- Maximum 2,000 bookmarks per request
+- Processed in chunks of 500 for reliability
+- Invalid URLs are skipped and counted in error summary
+- Duplicate URLs within the batch or group are skipped
+
+### Permissions Required
+
+Browser bookmark sync requires:
+- `bookmarks` permission to listen for new bookmark events
+- `storage` permission to track which bookmarks have been synced
+
+## Deduplication Across Sources
+
+When the same URL is captured from multiple sources (manual save, X bookmark, browser bookmark), the extension uses intelligent deduplication.
+
+### URL Normalization
+
+All URLs are normalized before comparison:
+```
+https://example.com/page/ → https://example.com/page
+https://example.com/page?utm_source=twitter → https://example.com/page
+```
+
+### Reclassification Logic
+
+When a duplicate URL is detected:
+
+1. **Timestamp Comparison**: The bookmark with the most recent `lastCapturedAt` wins
+2. **Source Priority**: If timestamps are equal, source priority determines the group:
+   - Manual popup (highest)
+   - Manual context menu
+   - Manual keyboard shortcut
+   - X bookmark
+   - Browser bookmark (lowest)
+3. **Group Movement**: The bookmark is moved to the winning source's group
+4. **Metadata Preservation**: Title, tags, notes, and other metadata are preserved
+5. **Source History**: All capture sources are tracked in a history array
+
+### Example Scenario
+
+<Steps>
+  <Step title="Day 1: Browser Bookmark">
+    You bookmark `https://example.com` using Chrome's bookmark button.
+    - Saved to **Imported - Browser**
+    - `primarySource`: `browser_bookmark`
+    - `sourceHistory`: `["browser_bookmark"]`
+  </Step>
+  
+  <Step title="Day 2: X Tweet">
+    You bookmark a tweet linking to `https://example.com`.
+    - Moved to **Imported - X**
+    - `primarySource`: `x_bookmark`
+    - `sourceHistory`: `["browser_bookmark", "x_bookmark"]`
+    - Title and favicon updated from tweet metadata
+  </Step>
+  
+  <Step title="Day 3: Manual Save">
+    You click the extension toolbar icon on `https://example.com`.
+    - Moved to your default group
+    - `primarySource`: `manual_popup`
+    - `sourceHistory`: `["browser_bookmark", "x_bookmark", "manual_popup"]`
+    - All your existing tags and notes remain intact
+  </Step>
+</Steps>
+
+## Reliability and Error Handling
+
+Auto-capture features operate on a best-effort basis:
+
+### No Retry Queue
+- Failed captures are not retried
+- Transient network errors may cause missed saves
+- Service worker restarts may drop in-flight events
+
+### Error Logging
+
+All errors are logged to the service worker console with source tags:
+
+```
+[X Capture] Failed to save tweet: Network error
+[Browser Sync] Failed to save bookmark: 401 Unauthorized
+```
+
+To view logs:
+1. Go to `chrome://extensions/`
+2. Find the Minimal extension
+3. Click "service worker" to open the console
+
+### Background Sync Failures
+
+- **X Capture**: Failed saves show no user-facing error (logged only)
+- **Browser Sync**: Silent operation - failures are invisible to the user
+- **Authentication Issues**: If you're logged out, auto-capture silently fails until you log back in
+
+## Configuration
+
+Auto-capture features work automatically once the extension is installed. No configuration is required.
+
+<Tip>
+  If you want to disable auto-capture, you can revoke specific permissions at `chrome://extensions/`, but this will break the corresponding feature entirely.
+</Tip>
+
+## API Endpoints
+
+The extension uses these API endpoints for auto-capture:
+
+### Save Single Bookmark
+```http
+POST /api/extension/bookmark
+Content-Type: application/json
+
+{
+  "url": "https://example.com",
+  "title": "Optional title",
+  "source": "x_bookmark" | "browser_bookmark" | "manual_popup" | "manual_context_menu" | "manual_shortcut",
+  "capturedAt": "2024-03-04T12:00:00Z"
+}
+```
+
+### Bulk Import (Browser Bookmarks)
+```http
+POST /api/extension/import
+Content-Type: application/json
+
+{
+  "bookmarks": [
+    { "title": "Example", "url": "https://example.com" },
+    { "title": "Another", "url": "https://another.com" }
+  ]
+}
+```
+
+### Check Bookmark Existence
+```http
+POST /api/extension/bookmark/check
+Content-Type: application/json
+
+{
+  "urls": ["https://example.com", "https://another.com"]
+}
+```
+
+All endpoints require:
+- Valid user session (authenticated)
+- Request origin matching the configured extension ID
+- CORS headers for cross-origin requests

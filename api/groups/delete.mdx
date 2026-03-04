@@ -1,0 +1,63 @@
+---
+title: Delete Group
+description: Delete a bookmark group
+---
+
+## Endpoint
+
+```
+group.delete
+```
+
+Deletes a group and all bookmarks within it. This action is irreversible.
+
+## Authentication
+
+Requires authentication via session cookie. Users can only delete groups they own.
+
+## Request
+
+<ParamField name="id" type="string" required>
+  ID of the group to delete
+</ParamField>
+
+## Response
+
+Returns a success confirmation.
+
+<ResponseField name="success" type="boolean" required>
+  Always `true` when deletion succeeds
+</ResponseField>
+
+## Example
+
+```typescript
+import { client } from '@/lib/client';
+
+const result = await client.group.delete({
+  id: "grp_123"
+});
+
+console.log(result);
+// { success: true }
+```
+
+## Schema
+
+```typescript
+const deleteByIdSchema = z.object({
+  id: z.string(),
+});
+```
+
+## Notes
+
+- Deleting a group also deletes all bookmarks within it
+- The deletion is permanent and cannot be undone
+- If the group doesn't exist or doesn't belong to the user, no error is thrown (using `deleteMany`)
+
+## Source
+
+- Schema: `lib/schema.ts:122`
+- Implementation: `server/procedures/bookmarks.ts:172`
+- Router: `server/router.ts:41`

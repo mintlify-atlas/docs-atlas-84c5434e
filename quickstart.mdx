@@ -1,80 +1,147 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with Minimal in minutes. Save your first bookmark and start organizing your links.
 ---
 
-## Get started in three steps
+Get up and running with Minimal in just a few steps. This guide will walk you through creating an account, saving your first bookmark, and organizing with groups.
 
-Get your documentation site running locally and make your first customization.
+## Create your account
 
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
+<Steps>
+  <Step title="Sign up at minimal.so">
+    Visit [minimal.so](https://minimal.so) and create your account. You can sign up with:
     
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
+    - **Email and password**: Enter your email and choose a password
+    - **Google OAuth**: Sign in with your Google account for faster setup
     
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
+    <Note>
+      No credit card required. Your bookmarks are private by default.
+    </Note>
+  </Step>
+  
+  <Step title="Verify your email">
+    If you signed up with email, check your inbox for a verification email. Click the link to verify your account.
     
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
+    <Tip>
+      Didn't receive the email? Check your spam folder or request a new verification email from the login page.
+    </Tip>
+  </Step>
+  
+  <Step title="Access your dashboard">
+    Once logged in, you'll see your dashboard with an input field to save bookmarks. Your account comes with a default "Bookmarks" group.
+  </Step>
+</Steps>
 
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
+## Save your first bookmark
 
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
+<Steps>
+  <Step title="Paste a URL">
+    In the input field at the top of your dashboard, paste any URL you want to save. For example:
+    
+    ```
+    https://github.com/ephraimduncan/minimal.so
+    ```
+  </Step>
+  
+  <Step title="Press Enter">
+    Hit **Enter** or **Cmd/Ctrl+Enter** to save. Minimal automatically:
+    
+    - Fetches the page title
+    - Extracts the description
+    - Downloads the favicon
+    - Normalizes the URL for deduplication
+    
+    <Note>
+      If the URL already exists in your bookmarks, it will be updated instead of creating a duplicate.
+    </Note>
+  </Step>
+  
+  <Step title="View your bookmark">
+    Your bookmark appears in the list below. You can:
+    
+    - Click to open the URL in a new tab
+    - Right-click (or hold) for options: Copy, Rename, Move, Delete
+    - Press **Space** to select multiple bookmarks for bulk operations
+  </Step>
+</Steps>
 
-### Step 3: Go live
+## Organize with groups
 
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
+<Steps>
+  <Step title="Create a new group">
+    Click the **+** button next to "Groups" in the sidebar to create a new group. Give it a name like "Work", "Reading List", or "Design Resources".
+    
+    <Tip>
+      Groups are automatically assigned a color from a predefined palette. You can change the color later in group settings.
+    </Tip>
+  </Step>
+  
+  <Step title="Move bookmarks to groups">
+    To move a bookmark to a different group:
+    
+    1. Right-click the bookmark (or press **Space** to select multiple)
+    2. Select **Move to group**
+    3. Choose the destination group
+    
+    <Note>
+      When you move a bookmark to a different group, its visibility resets to the group's default (typically private).
+    </Note>
+  </Step>
+  
+  <Step title="Switch between groups">
+    Click any group in the sidebar to view its bookmarks. The URL updates to reflect the current group, so you can bookmark and share specific group views.
+  </Step>
+</Steps>
+
+## Learn keyboard shortcuts
+
+Minimal is keyboard-first. Here are the essential shortcuts:
+
+| Shortcut | Action |
+|----------|--------|
+| **↑ / ↓** | Navigate bookmarks |
+| **Enter** | Open bookmark |
+| **Cmd/Ctrl+C** | Copy URL |
+| **Cmd/Ctrl+E** | Rename bookmark |
+| **Cmd/Ctrl+⌫** | Delete bookmark |
+| **Space** | Select for bulk actions |
+| **Cmd/Ctrl+A** | Select all bookmarks |
+| **Escape** | Deselect all |
+
+<Tip>
+  See the full list of keyboard shortcuts in [Keyboard Shortcuts](/features/keyboard-shortcuts).
+</Tip>
+
+## Install the browser extension
+
+Save bookmarks from anywhere with the Chrome extension:
+
+<CardGroup cols={2}>
+  <Card title="Install extension" icon="puzzle-piece" href="/extension/installation">
+    Add the Chrome extension for one-click saving from any webpage
+  </Card>
+  <Card title="Auto-capture" icon="bolt" href="/extension/auto-capture">
+    Automatically sync bookmarks from X (Twitter) and your browser
+  </Card>
+</CardGroup>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
-
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Features" icon="sparkles" href="/features/bookmarks">
+    Explore all bookmark management features and workflows
+  </Card>
+  <Card title="Public profiles" icon="user" href="/features/public-profiles">
+    Share your bookmark collections with custom public profiles
+  </Card>
+  <Card title="Search" icon="magnifying-glass" href="/features/search">
+    Learn how to search and filter your bookmarks effectively
+  </Card>
+  <Card title="API reference" icon="code" href="/api/overview">
+    Build custom integrations with the Minimal API
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Self-hosting
+
+Want to run your own Minimal instance? See the [Self-Hosting Guide](/self-hosting/overview) for installation instructions and configuration options.

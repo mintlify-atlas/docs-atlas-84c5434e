@@ -1,0 +1,273 @@
+---
+title: Refetch Bookmark Metadata
+description: Refetch and update a bookmark's title and favicon from its URL
+---
+
+## Endpoint
+
+```typescript
+client.bookmark.refetch(input)
+```
+
+**Defined in:** `server/procedures/bookmarks.ts:181`
+
+## Authentication
+
+This endpoint requires authentication. See [Authentication](/api/authentication) for details.
+
+## Request
+
+<ParamField path="id" type="string" required>
+  ID of the bookmark to refetch metadata for
+</ParamField>
+
+### Input Schema
+
+```typescript
+{
+  id: string;
+}
+```
+
+## Response
+
+Returns the updated bookmark object with refreshed metadata.
+
+<ResponseField name="id" type="string" required>
+  The bookmark ID
+</ResponseField>
+
+<ResponseField name="title" type="string" required>
+  Updated title from the page's metadata
+</ResponseField>
+
+<ResponseField name="favicon" type="string | null">
+  Updated favicon URL fetched from the page
+</ResponseField>
+
+<ResponseField name="url" type="string | null">
+  The bookmark's URL (unchanged)
+</ResponseField>
+
+<ResponseField name="type" type="'link' | 'color' | 'text'" required>
+  Bookmark type
+</ResponseField>
+
+<ResponseField name="color" type="string | null">
+  Color value (unchanged)
+</ResponseField>
+
+<ResponseField name="groupId" type="string" required>
+  Group ID (unchanged)
+</ResponseField>
+
+<ResponseField name="userId" type="string" required>
+  Owner's user ID
+</ResponseField>
+
+<ResponseField name="createdAt" type="Date" required>
+  Original creation timestamp
+</ResponseField>
+
+<ResponseField name="updatedAt" type="Date" required>
+  Updated timestamp (automatically set to current time)
+</ResponseField>
+
+## Examples
+
+### Refetch Single Bookmark
+
+```tsx
+import { orpc } from '@/lib/orpc';
+
+function RefetchButton({ bookmarkId }: { bookmarkId: string }) {
+  const refetchMutation = orpc.bookmark.refetch.useMutation();
+
+  const handleRefetch = async () => {
+    const updated = await refetchMutation.mutateAsync({
+      id: bookmarkId,
+    });
+
+    console.log('Updated title:', updated.title);
+    console.log('Updated favicon:', updated.favicon);
+  };
+
+  return (
+    <button
+      onClick={handleRefetch}
+      disabled={refetchMutation.isPending}
+    >
+      {refetchMutation.isPending ? 'Refetching...' : 'Refresh Metadata'}
+    </button>
+  );
+}
+```
+
+### Refetch with Error Handling
+
+```tsx
+import { client } from '@/lib/orpc';
+import { ORPCError } from '@orpc/client';
+
+async function refetchBookmarkMetadata(bookmarkId: string) {
+  try {
+    const bookmark = await client.bookmark.refetch({ id: bookmarkId });
+    return { success: true, bookmark };
+  } catch (error) {
+    if (error instanceof ORPCError) {
+      if (error.code === 'NOT_FOUND') {
+        return { success: false, error: 'Bookmark not found or has no URL' };
+      }
+    }
+    throw error;
+  }
+}
+```
+
+### Server-Side Refetch
+
+```tsx
+import { serverClient } from '@/lib/orpc.server';
+
+async function refreshBookmark(bookmarkId: string) {
+  const bookmark = await serverClient.bookmark.refetch({
+    id: bookmarkId,
+  });
+
+  return {
+    id: bookmark.id,
+    title: bookmark.title,
+    favicon: bookmark.favicon,
+  };
+}
+```
+
+### Batch Refetch Multiple Bookmarks
+
+```tsx
+import { client } from '@/lib/orpc';
+
+async function refetchAllBookmarks(bookmarkIds: string[]) {
+  const results = await Promise.allSettled(
+    bookmarkIds.map(id => client.bookmark.refetch({ id }))
+  );
+
+  const succeeded = results.filter(
+    r => r.status === 'fulfilled'
+  ).length;
+
+  console.log(`Refetched ${succeeded}/${bookmarkIds.length} bookmarks`);
+}
+```
+
+## Implementation
+
+From `server/procedures/bookmarks.ts:181`:
+
+```typescript
+export const refetchBookmark = authed
+  .input(z.object({ id: z.string() }))
+  .handler(async ({ context, input }) => {
+    const existing = await db.bookmark.findFirst({
+      where: { id: input.id, userId: context.user.id },
+    });
+
+    if (!existing || !existing.url) {
+      throw new ORPCError("NOT_FOUND", {
+        message: "Bookmark not found or has no URL",
+      });
+    }
+
+    const metadata = await getUrlMetadata(existing.url);
+
+    const bookmark = await db.bookmark.update({
+      where: { id: input.id, userId: context.user.id },
+      data: {
+        title: metadata.title || existing.title,
+        favicon: metadata.favicon,
+      },
+    });
+
+    return bookmark;
+  });
+```
+
+## Behavior
+
+### Metadata Fetching
+
+The endpoint fetches fresh metadata from the bookmark's URL:
+
+1. Verifies the bookmark exists and has a URL
+2. Calls `getUrlMetadata()` to fetch the page's title and favicon
+3. Updates the bookmark with the new metadata
+4. Falls back to the existing title if fetching fails
+
+### Title Fallback
+
+If the metadata fetch fails or returns no title:
+
+```typescript
+title: metadata.title || existing.title
+```
+
+The existing title is preserved rather than being cleared.
+
+### Favicon Update
+
+The favicon is always updated, even if `null`:
+
+```typescript
+favicon: metadata.favicon
+```
+
+This ensures outdated favicons are removed if they're no longer available.
+
+### URL Requirement
+
+Only bookmarks with a URL can be refetched. Color and text bookmarks will return a `NOT_FOUND` error:
+
+```typescript
+if (!existing || !existing.url) {
+  throw new ORPCError("NOT_FOUND", {
+    message: "Bookmark not found or has no URL",
+  });
+}
+```
+
+## Use Cases
+
+### When to Refetch
+
+- Page title has changed since the bookmark was created
+- Favicon has been updated or is missing
+- Original metadata fetch failed during creation
+- User wants to refresh stale metadata
+
+### When Not to Refetch
+
+- Bookmark type is `color` or `text`
+- URL is broken or no longer accessible
+- Metadata is manually customized and shouldn't be overwritten
+
+## Errors
+
+<ResponseField name="NOT_FOUND" type="error">
+  The bookmark doesn't exist, doesn't belong to the user, or has no URL (e.g., color/text type bookmark).
+</ResponseField>
+
+<ResponseField name="UNAUTHORIZED" type="error">
+  User is not authenticated.
+</ResponseField>
+
+## Related Endpoints
+
+- [Create Bookmark](/api/bookmarks/create) - Automatically fetches metadata on creation
+- [Update Bookmark](/api/bookmarks/update) - Update bookmark without refetching metadata
+
+## Notes
+
+- Metadata fetching may take several seconds depending on the target site's response time
+- The operation is safe to retry if it fails
+- Only link-type bookmarks with valid URLs can be refetched
+- The `updatedAt` timestamp is automatically updated

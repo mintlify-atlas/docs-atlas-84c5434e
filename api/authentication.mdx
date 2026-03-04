@@ -1,0 +1,156 @@
+---
+title: Authentication
+description: How API authentication works using Better Auth sessions
+---
+
+## Overview
+
+Minimal's API uses session-based authentication powered by [Better Auth](https://better-auth.com/). All authenticated endpoints verify the user's session before executing the requested operation.
+
+## Authentication Flow
+
+The authentication is handled by middleware defined in `server/context.ts:5`:
+
+```typescript
+export const base = os.use(async ({ next }) => {
+  const headersList = await headers();
+  const session: Session | null = await auth.api.getSession({
+    headers: headersList,
+  });
+
+  return next({
+    context: {
+      session,
+      user: session?.user ?? null,
+    },
+  });
+});
+```
+
+## Protected Procedures
+
+Most API procedures require authentication using the `authed` middleware:
+
+```typescript
+export const authed = base.use(({ context, next }) => {
+  if (!context.user) {
+    throw new ORPCError("UNAUTHORIZED");
+  }
+
+  return next({
+    context: {
+      ...context,
+      user: context.user,
+    },
+  });
+});
+```
+
+See `server/context.ts:19` for the implementation.
+
+## Session Context
+
+Authenticated procedures have access to the user context:
+
+```typescript
+context.user.id    // User's unique identifier
+context.user.email // User's email address
+context.user.name  // User's display name
+```
+
+## How Sessions Work
+
+### Client-Side (Browser)
+
+Sessions are automatically managed through HTTP-only cookies set by Better Auth:
+
+- Cookie is set on successful login
+- Automatically sent with each API request
+- No manual token management required
+
+### Server-Side
+
+Each RPC request:
+
+1. Extracts session from request headers
+2. Validates session with Better Auth
+3. Attaches user to context if valid
+4. Returns `UNAUTHORIZED` error if invalid or missing
+
+## Public Endpoints
+
+Some endpoints use the `base` middleware instead of `authed`, making them accessible without authentication:
+
+```typescript
+// Example: Public profile endpoint
+export const getPublicProfile = base
+  .input(z.object({ username: z.string() }))
+  .handler(async ({ input }) => {
+    // Available to everyone
+  });
+```
+
+## Error Responses
+
+When authentication fails, the API returns an `UNAUTHORIZED` error:
+
+```json
+{
+  "code": "UNAUTHORIZED",
+  "message": "Unauthorized"
+}
+```
+
+## Usage Examples
+
+### Client Component with Auth
+
+```tsx
+import { orpc } from '@/lib/orpc';
+
+function MyComponent() {
+  // Automatically uses session from cookies
+  const { data, error } = orpc.bookmark.list.useQuery({});
+
+  if (error?.code === 'UNAUTHORIZED') {
+    return <div>Please log in</div>;
+  }
+
+  return <div>{/* ... */}</div>;
+}
+```
+
+### Server Component with Auth
+
+```tsx
+import { serverClient } from '@/lib/orpc.server';
+import { redirect } from 'next/navigation';
+
+async function BookmarksPage() {
+  try {
+    const bookmarks = await serverClient.bookmark.list({});
+    return <div>{/* ... */}</div>;
+  } catch (error) {
+    if (error.code === 'UNAUTHORIZED') {
+      redirect('/login');
+    }
+    throw error;
+  }
+}
+```
+
+## Resource Ownership
+
+All authenticated procedures enforce resource ownership by filtering queries by `userId`:
+
+```typescript
+// Example from bookmark list procedure
+const bookmarks = await db.bookmark.findMany({
+  where: {
+    userId: context.user.id, // Only user's own bookmarks
+    ...(input.groupId && { groupId: input.groupId }),
+  },
+});
+```
+
+This ensures users can only access and modify their own resources.

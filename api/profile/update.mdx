@@ -1,0 +1,130 @@
+---
+title: Update Profile
+description: Update the authenticated user's profile information
+---
+
+## Endpoint
+
+```
+profile.update
+```
+
+Updates the user's profile information. Username uniqueness is validated.
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Request
+
+<ParamField name="username" type="string | null">
+  Username (3-39 characters, lowercase letters, numbers, and hyphens only). Must start and end with a letter or number. Cannot contain consecutive hyphens or be a reserved word.
+</ParamField>
+
+<ParamField name="bio" type="string | null">
+  User bio (max 160 characters)
+</ParamField>
+
+<ParamField name="github" type="string | null">
+  GitHub username (max 39 characters)
+</ParamField>
+
+<ParamField name="twitter" type="string | null">
+  Twitter/X handle (max 15 characters)
+</ParamField>
+
+<ParamField name="website" type="string | null">
+  Personal website URL (max 200 characters). Protocol is automatically added if missing.
+</ParamField>
+
+<ParamField name="isProfilePublic" type="boolean" required>
+  Whether the profile should be publicly visible
+</ParamField>
+
+## Response
+
+Returns the updated profile data.
+
+<ResponseField name="image" type="string | null">
+  Profile image URL (unchanged)
+</ResponseField>
+
+<ResponseField name="username" type="string | null">
+  Updated username (lowercase)
+</ResponseField>
+
+<ResponseField name="bio" type="string | null">
+  Updated bio
+</ResponseField>
+
+<ResponseField name="github" type="string | null">
+  Updated GitHub username
+</ResponseField>
+
+<ResponseField name="twitter" type="string | null">
+  Updated Twitter handle
+</ResponseField>
+
+<ResponseField name="website" type="string | null">
+  Updated website URL
+</ResponseField>
+
+<ResponseField name="isProfilePublic" type="boolean">
+  Updated visibility setting
+</ResponseField>
+
+## Example
+
+```typescript
+import { client } from '@/lib/client';
+
+const profile = await client.profile.update({
+  username: "johndoe",
+  bio: "Full-stack developer",
+  github: "johndoe",
+  twitter: "johndoe",
+  website: "johndoe.com", // Will be transformed to https://johndoe.com
+  isProfilePublic: true
+});
+
+console.log(profile);
+```
+
+## Errors
+
+- `CONFLICT` - Username is already taken by another user
+- Validation errors for invalid username format
+
+## Schema
+
+```typescript
+const usernameSchema = z
+  .string()
+  .min(3, "Username must be at least 3 characters")
+  .max(39, "Username must be at most 39 characters")
+  .regex(
+    /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/,
+    "Lowercase letters, numbers, and hyphens only. Must start and end with a letter or number."
+  )
+  .refine((val) => !val.includes("--"), "Username cannot contain consecutive hyphens")
+  .refine((val) => !RESERVED_USERNAMES.has(val), "This username is reserved");
+
+const updateProfileSchema = z.object({
+  username: usernameSchema.nullable(),
+  bio: z.string().max(160).nullable(),
+  github: z.string().max(39).nullable(),
+  twitter: z.string().max(15).nullable(),
+  website: z.string().max(200).url().nullable(),
+  isProfilePublic: z.boolean(),
+});
+```
+
+## Reserved Usernames
+
+The following usernames cannot be used: `login`, `signup`, `dashboard`, `settings`, `public`, `admin`, `api`, `rpc`, `u`, `chrome`.
+
+## Source
+
+- Schema: `lib/schema.ts:16-44`
+- Implementation: `server/procedures/profile.ts:23`
+- Router: `server/router.ts:46`

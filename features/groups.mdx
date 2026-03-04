@@ -1,0 +1,164 @@
+---
+title: Groups & Organization
+description: Organize your bookmarks into groups and collections
+---
+
+Groups (also called collections) help you organize bookmarks by topic, project, or any categorization that works for you.
+
+## Creating Groups
+
+Create a new group:
+
+1. Click the group selector in the header (shows current group name with colored dot)
+2. Select "Create Group" from the dropdown
+3. Enter a name for your group
+4. Click "Create"
+
+Each group is automatically assigned a unique color from a predefined palette.
+
+### Color Assignment
+
+Minimal uses an intelligent color assignment system:
+
+```javascript
+const palette = [
+  "#3E63DD", // Blue
+  "#208368", // Green
+  "#FFDC00", // Yellow
+  "#CE2C31", // Red
+  "#53195D", // Purple
+  "#0086F0FA", // Light blue
+  "#838383", // Gray
+  "#74B06F", // Sage
+  "#4A90D9", // Sky
+  "#E6A23C", // Orange
+  "#9B59B6", // Violet
+  "#E74C3C", // Coral
+  "#202020", // Black
+];
+```
+
+Colors are assigned based on availability, cycling through unused colors first.
+
+## Switching Groups
+
+View bookmarks from different groups:
+
+1. Click the group selector in the header
+2. Select any group from the list
+3. The bookmark list updates to show that group's items
+
+Each group shows:
+- **Colored dot**: Visual identifier
+- **Group name**: The name you assigned
+- **Bookmark count**: Number of bookmarks (when not selected)
+- **Public indicator**: Globe icon if the group is public
+
+## Managing Groups
+
+### Group Visibility
+
+Control whether a group appears on your public profile:
+
+1. Open the group selector dropdown
+2. Select "Make Public" or "Make Private"
+3. Confirm the action in the dialog
+
+<Warning>
+Making a group public makes **all bookmarks** in that group visible on your public profile, unless individual bookmarks are marked private.
+</Warning>
+
+### Public Group Behavior
+
+When a group is marked public:
+- All bookmarks inherit public visibility by default
+- Individual bookmarks can be marked private to hide them
+- A globe icon appears next to the group name
+- The group appears on your public profile page
+
+### Private Group Behavior
+
+When a group is private:
+- No bookmarks are visible on your public profile
+- Individual bookmark visibility settings are ignored
+- The group is only visible to you
+
+## Deleting Groups
+
+<Warning>
+Deleting a group also deletes all bookmarks within it. This action cannot be undone.
+</Warning>
+
+To delete a group:
+
+1. Select the group you want to delete
+2. Open the group selector dropdown
+3. Press and hold "Delete Group" for 2 seconds
+4. The group and all its bookmarks will be deleted
+
+The hold-to-delete mechanism prevents accidental deletions.
+
+<Note>
+You cannot delete your last remaining group. At least one group must exist.
+</Note>
+
+## Group Selector UI
+
+The group dropdown shows:
+
+```
+Bookmark Manager
+  /
+  [●] Group Name ▼
+
+  Dropdown:
+  ● Design Resources        ✓ (selected)
+  ● Dev Tools              12
+  ● Colors                  8
+  ⊕ Create Group
+  🌐 Make Public/Private
+  🗑 Delete Group
+```
+
+## URL Management
+
+Group selection is managed via URL query parameters:
+- Groups are identified by slugified names
+- Switching groups updates the URL: `?group=design-resources`
+- URLs are shareable and bookmarkable
+- If a group is deleted, you're redirected to the first available group
+
+## Bookmark Counts
+
+Each group tracks its bookmark count:
+- Updated in real-time as you add/remove bookmarks
+- Displayed in the group selector dropdown
+- Used to prevent deletion of the last group
+- Optimistically updated for better UX
+
+## Default Group
+
+When you sign up, a default group is created automatically. You can:
+- Rename it to anything you like
+- Delete it (if you have other groups)
+- Make it public or private
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Organize by Project">
+    Create a group for each project or client you're working on. This keeps work-related bookmarks separate and easy to find.
+  </Accordion>
+  
+  <Accordion title="Topic-Based Collections">
+    Group bookmarks by topic (Design, Development, Marketing) for easier browsing.
+  </Accordion>
+  
+  <Accordion title="Public Portfolios">
+    Use public groups to showcase curated collections on your profile. Great for sharing resources with others.
+  </Accordion>
+  
+  <Accordion title="Private Archives">
+    Keep sensitive or personal bookmarks in private groups to maintain privacy.
+  </Accordion>
+</AccordionGroup>

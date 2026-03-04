@@ -1,0 +1,453 @@
+---
+title: Authentication
+description: Configure Better Auth with email/password and OAuth providers
+---
+
+Minimal uses Better Auth for authentication, providing email/password login, OAuth providers, and email verification out of the box.
+
+## Authentication Overview
+
+Minimal's authentication system includes:
+
+- **Email/Password**: Built-in email and password authentication
+- **OAuth**: Google sign-in (optional)
+- **Email Verification**: Email verification on signup
+- **Password Reset**: Secure password reset flow
+- **Session Management**: 7-day sessions with automatic renewal
+- **Account Linking**: Link multiple OAuth providers to one account
+- **Chrome Extension**: CORS support for browser extension
+
+## Better Auth Configuration
+
+Authentication is configured in `lib/auth.ts` using Better Auth with Prisma adapter.
+
+### Core Setup
+
+```typescript
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+import { nextCookies } from "better-auth/next-js";
+import { db } from "./db";
+
+export const auth = betterAuth({
+  baseURL: process.env.NEXT_PUBLIC_APP_URL,
+  secret: process.env.BETTER_AUTH_SECRET,
+  database: prismaAdapter(db, { provider: "sqlite" }),
+  plugins: [nextCookies()],
+});
+```
+
+### Required Environment Variables
+
+<CodeGroup>
+```bash Minimal
+BETTER_AUTH_SECRET="your-secret-key"
+NEXT_PUBLIC_APP_URL="https://your-domain.com"
+```
+
+```bash With OAuth
+BETTER_AUTH_SECRET="your-secret-key"
+NEXT_PUBLIC_APP_URL="https://your-domain.com"
+GOOGLE_CLIENT_ID="your-client-id"
+GOOGLE_CLIENT_SECRET="your-client-secret"
+```
+
+```bash Development
+BETTER_AUTH_SECRET="dev-secret-key"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+</CodeGroup>
+
+## Email and Password Authentication
+
+Email/password authentication is enabled by default:
+
+```typescript
+emailAndPassword: {
+  enabled: true,
+  sendResetPassword: async ({ user, url }) => {
+    await sendEmail({
+      to: user.email,
+      ...resetPasswordEmail(user.name, url),
+    });
+  },
+}
+```
+
+### Features
+
+- Secure password hashing
+- Password reset via email
+- Email verification
+- Account creation with automatic group setup
+
+### User Signup Flow
+
+<Steps>
+  <Step title="User registers">
+    User provides name, email, and password
+  </Step>
+
+  <Step title="Account created">
+    User account is created with `emailVerified: false`
+  </Step>
+
+  <Step title="Verification email sent">
+    Email with verification link is sent to user
+  </Step>
+
+  <Step title="Default group created">
+    A default "Bookmarks" group is created for the user
+  </Step>
+
+  <Step title="User verifies email">
+    User clicks verification link and is automatically signed in
+  </Step>
+</Steps>
+
+### Password Requirements
+
+<Note>
+Better Auth enforces secure password requirements by default. Customize these in your auth configuration if needed.
+</Note>
+
+## Email Verification
+
+Email verification is configured to:
+
+- Send verification email on signup
+- Auto sign-in after verification
+- Use custom email templates
+
+```typescript
+emailVerification: {
+  sendOnSignUp: true,
+  autoSignInAfterVerification: true,
+  sendVerificationEmail: async ({ user, url }) => {
+    await sendEmail({
+      to: user.email,
+      ...verificationEmail(user.name, url),
+    });
+  },
+}
+```
+
+### Email Service Setup
+
+Minimal uses Autosend for transactional emails:
+
+<Steps>
+  <Step title="Get Autosend API Key">
+    1. Sign up at [autosend.com](https://autosend.com)
+    2. Create an API key from the dashboard
+  </Step>
+
+  <Step title="Configure Environment">
+    ```bash .env
+    AUTOSEND_API_KEY="as_live_abc123..."
+    ```
+  </Step>
+
+  <Step title="Test Email Sending">
+    Sign up for a test account to verify emails are sent correctly.
+  </Step>
+</Steps>
+
+<Warning>
+Without `AUTOSEND_API_KEY`, email verification and password reset will not work. Users can still sign up, but won't receive emails.
+</Warning>
+
+### Email Templates
+
+Minimal includes three email templates:
+
+1. **Welcome Email**: Sent on first signup
+2. **Verification Email**: Email verification link
+3. **Reset Password Email**: Password reset link
+
+Templates are located in `lib/emails/` and use a consistent design from `lib/email.ts`.
+
+## OAuth Configuration
+
+### Google OAuth Setup
+
+<Steps>
+  <Step title="Create Google OAuth App">
+    1. Go to [Google Cloud Console](https://console.cloud.google.com)
+    2. Create a new project or select existing
+    3. Navigate to "APIs & Services" > "Credentials"
+    4. Click "Create Credentials" > "OAuth client ID"
+    5. Select "Web application"
+  </Step>
+
+  <Step title="Configure OAuth Consent Screen">
+    1. Navigate to "OAuth consent screen"
+    2. Select "External" (or "Internal" for workspace)
+    3. Fill in required fields:
+       - App name: "Minimal"
+       - User support email
+       - Developer contact email
+    4. Add scopes:
+       - `userinfo.email`
+       - `userinfo.profile`
+  </Step>
+
+  <Step title="Set Authorized Redirect URIs">
+    Add your callback URL:
+
+    ```
+    https://your-domain.com/api/auth/callback/google
+    ```
+
+    For development:
+    ```
+    http://localhost:3000/api/auth/callback/google
+    ```
+  </Step>
+
+  <Step title="Get Credentials">
+    Copy:
+    - Client ID
+    - Client Secret
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    ```bash .env
+    GOOGLE_CLIENT_ID="123456789-abc.apps.googleusercontent.com"
+    GOOGLE_CLIENT_SECRET="GOCSPX-abc123def456ghi789"
+    ```
+  </Step>
+</Steps>
+
+### OAuth Configuration in Code
+
+Google OAuth is conditionally enabled:
+
+```typescript
+const { GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET } = process.env;
+const googleOAuthEnabled = Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
+
+...(googleOAuthEnabled && {
+  socialProviders: {
+    google: {
+      clientId: GOOGLE_CLIENT_ID!,
+      clientSecret: GOOGLE_CLIENT_SECRET!,
+    },
+  },
+})
+```
+
+If credentials are not provided, Google sign-in is automatically disabled.
+
+### Account Linking
+
+Minimal supports linking multiple OAuth providers to one account:
+
+```typescript
+account: {
+  accountLinking: {
+    enabled: true,
+    trustedProviders: ["google"],
+  },
+}
+```
+
+This allows users to:
+- Sign in with email/password, then link Google
+- Sign in with Google, then add password
+- Link multiple OAuth providers (if additional providers are added)
+
+## Session Management
+
+Sessions are configured with:
+
+```typescript
+session: {
+  expiresIn: 60 * 60 * 24 * 7,  // 7 days
+  updateAge: 60 * 60 * 24,       // Refresh daily
+}
+```
+
+- **Session Duration**: 7 days
+- **Update Frequency**: Session extended every 24 hours of activity
+- **Storage**: Database-backed sessions (session table)
+- **Security**: Tracks IP address and user agent
+
+### Session Data
+
+Each session stores:
+
+- Session token (unique, indexed)
+- User ID
+- Expiration timestamp
+- IP address (optional)
+- User agent (optional)
+- Created/updated timestamps
+
+## Chrome Extension Support
+
+Minimal supports authentication from a Chrome extension:
+
+```typescript
+trustedOrigins: CHROME_EXTENSION_ID
+  ? [`chrome-extension://${CHROME_EXTENSION_ID}`]
+  : []
+```
+
+### Configuration
+
+<Steps>
+  <Step title="Get Extension ID">
+    After building your Chrome extension, note the extension ID from `chrome://extensions`
+  </Step>
+
+  <Step title="Configure Environment">
+    ```bash .env
+    CHROME_EXTENSION_ID="abcdefghijklmnopqrstuvwxyz123456"
+    NEXT_PUBLIC_CHROME_EXTENSION_ID="abcdefghijklmnopqrstuvwxyz123456"
+    ```
+  </Step>
+
+  <Step title="Rebuild Application">
+    ```bash
+    bun run build
+    ```
+  </Step>
+</Steps>
+
+This adds the extension origin to CORS allowed origins for API requests.
+
+## Authentication Hooks
+
+Minimal uses Better Auth hooks to perform actions after authentication:
+
+```typescript
+hooks: {
+  after: createAuthMiddleware(async (ctx) => {
+    const session = ctx.context.newSession;
+    if (!session) return;
+
+    // Create default group for new users
+    await ensureDefaultGroup(session.user.id);
+
+    // Track signup/login events
+    const isNewUser = 
+      Date.now() - new Date(session.user.createdAt).getTime() < 60_000;
+    
+    if (isNewUser) {
+      // Send welcome email
+      await sendEmail({
+        to: session.user.email,
+        ...welcomeEmail(session.user.name),
+      });
+    }
+  }),
+}
+```
+
+### Default Group Creation
+
+Every user gets a default "Bookmarks" group:
+
+```typescript
+async function ensureDefaultGroup(userId: string): Promise<void> {
+  const existingGroups = await db.group.count({ where: { userId } });
+  if (existingGroups > 0) return;
+
+  await db.group.create({
+    data: { name: "Bookmarks", color: "#74B06F", userId },
+  });
+}
+```
+
+## Security Best Practices
+
+<Warning>
+Follow these security practices for production deployments:
+</Warning>
+
+### Secret Management
+
+1. **Strong Secret**: Generate with `openssl rand -base64 32`
+2. **Never Commit**: Add `.env` to `.gitignore`
+3. **Rotate Regularly**: Update `BETTER_AUTH_SECRET` periodically
+4. **Environment Separation**: Use different secrets for dev/prod
+
+### HTTPS Requirements
+
+<Note>
+Better Auth requires HTTPS in production for secure cookie transmission.
+</Note>
+
+- Use HTTPS for `NEXT_PUBLIC_APP_URL`
+- Configure SSL/TLS certificates (Let's Encrypt recommended)
+- Set secure cookie flags automatically in production
+
+### OAuth Security
+
+1. **Verify Redirect URIs**: Only add your actual domain
+2. **Restrict Scopes**: Only request necessary OAuth scopes
+3. **Secure Secrets**: Keep `GOOGLE_CLIENT_SECRET` private
+4. **Review Permissions**: Regularly review OAuth app permissions
+
+## Troubleshooting
+
+### "BETTER_AUTH_SECRET is required"
+
+Set the secret in `.env`:
+
+```bash
+BETTER_AUTH_SECRET="$(openssl rand -base64 32)"
+```
+
+### OAuth Redirect Mismatch
+
+1. Check `NEXT_PUBLIC_APP_URL` matches OAuth redirect URI exactly
+2. Ensure protocol (http/https) is correct
+3. Verify no trailing slashes in URLs
+4. Add both development and production URIs to OAuth app
+
+### Email Not Sending
+
+1. Verify `AUTOSEND_API_KEY` is set and valid
+2. Check Autosend dashboard for delivery logs
+3. Review application logs for email errors
+4. Test with a known working email address
+
+### Session Expired Immediately
+
+1. Check server and client clocks are synchronized
+2. Verify database is correctly storing sessions
+3. Check `NEXT_PUBLIC_APP_URL` matches your actual domain
+4. Review browser cookie settings (allow cookies)
+
+### Chrome Extension CORS Issues
+
+1. Verify `CHROME_EXTENSION_ID` matches actual extension ID
+2. Ensure extension is loaded (check `chrome://extensions`)
+3. Rebuild application after adding extension ID
+4. Check browser console for specific CORS errors
+
+## User Management
+
+### Admin Access
+
+Set admin email for admin privileges:
+
+```bash .env
+ADMIN_EMAIL="admin@example.com"
+```
+
+### User Roles
+
+Currently, Minimal uses a simple admin check. To extend:
+
+1. Add `role` field to user model
+2. Update auth hooks to check roles
+3. Implement role-based access control in API routes
+
+## Next Steps
+
+- [Configuration](/self-hosting/configuration) - Complete environment variables guide
+- [Database Setup](/self-hosting/database) - Database configuration
+- [Installation](/self-hosting/installation) - Full installation guide

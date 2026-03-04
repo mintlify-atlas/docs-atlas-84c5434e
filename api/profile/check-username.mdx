@@ -1,0 +1,68 @@
+---
+title: Check Username Availability
+description: Check if a username is available for use
+---
+
+## Endpoint
+
+```
+profile.checkUsername
+```
+
+Checks whether a username is available. Returns `true` if the username is available or already belongs to the authenticated user.
+
+## Authentication
+
+Requires authentication via session cookie.
+
+## Request
+
+<ParamField name="username" type="string" required>
+  Username to check (3-39 characters, lowercase letters, numbers, and hyphens only)
+</ParamField>
+
+## Response
+
+<ResponseField name="available" type="boolean" required>
+  `true` if the username is available or belongs to the current user, `false` if taken by another user
+</ResponseField>
+
+## Example
+
+```typescript
+import { client } from '@/lib/client';
+
+const result = await client.profile.checkUsername({
+  username: "johndoe"
+});
+
+console.log(result);
+// { available: true }
+```
+
+## Schema
+
+```typescript
+const usernameSchema = z
+  .string()
+  .min(3, "Username must be at least 3 characters")
+  .max(39, "Username must be at most 39 characters")
+  .regex(
+    /^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/,
+    "Lowercase letters, numbers, and hyphens only. Must start and end with a letter or number."
+  )
+  .refine((val) => !val.includes("--"), "Username cannot contain consecutive hyphens")
+  .refine((val) => !RESERVED_USERNAMES.has(val), "This username is reserved");
+```
+
+## Notes
+
+- Username is automatically converted to lowercase before checking
+- Returns `true` if the username belongs to the authenticated user (useful for validation during profile updates)
+- Username must pass validation rules (no reserved words, valid format)
+
+## Source
+
+- Schema: `lib/schema.ts:16`
+- Implementation: `server/procedures/profile.ts:65`
+- Router: `server/router.ts:47`

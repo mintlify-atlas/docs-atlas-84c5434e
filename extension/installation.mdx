@@ -1,0 +1,125 @@
+---
+title: 'Installation Guide'
+description: 'Install the Minimal Chrome Extension and connect it to your account'
+---
+
+Install the Minimal Chrome Extension to save bookmarks directly from your browser.
+
+## Install from Chrome Web Store
+
+<Info>
+  The Chrome Web Store listing is coming soon. For now, follow the development installation steps below.
+</Info>
+
+## Development Installation
+
+For developers or early testers, you can install the extension in development mode.
+
+<Steps>
+  <Step title="Get the Extension Files">
+    Clone the Minimal repository or download the extension folder:
+    ```bash
+    git clone https://github.com/yourusername/minimal.git
+    cd minimal/extension
+    ```
+  </Step>
+  
+  <Step title="Install Dependencies">
+    Install the required dependencies:
+    ```bash
+    bun install
+    ```
+  </Step>
+  
+  <Step title="Open Chrome Extensions">
+    Navigate to `chrome://extensions/` in your Chrome browser
+  </Step>
+  
+  <Step title="Enable Developer Mode">
+    Toggle "Developer mode" in the top right corner
+  </Step>
+  
+  <Step title="Load Unpacked Extension">
+    Click "Load unpacked" and select the `extension` folder from the project
+  </Step>
+  
+  <Step title="Copy Extension ID">
+    Copy the extension ID shown under the extension name. You'll need this for server configuration.
+  </Step>
+</Steps>
+
+## Server Configuration (Self-Hosting)
+
+If you're self-hosting Minimal or running a local development server, you need to configure the server to accept requests from your extension.
+
+<Steps>
+  <Step title="Add Extension ID to Environment">
+    Add the extension ID to your `.env` file:
+    ```bash
+    CHROME_EXTENSION_ID=your-extension-id-here
+    ```
+  </Step>
+  
+  <Step title="Restart the Server">
+    Restart your Minimal server for the changes to take effect:
+    ```bash
+    bun run dev
+    ```
+  </Step>
+</Steps>
+
+<Warning>
+  The server validates all extension requests using the extension ID. Without this configuration, bookmark saves will fail with a 403 Forbidden error.
+</Warning>
+
+## Verify Installation
+
+To verify the extension is working correctly:
+
+1. **Check the Icon**: The Minimal icon should appear in your browser toolbar
+2. **Test a Save**: Click the icon on any page. You should see a notification confirming the save
+3. **Check Minimal**: Visit your Minimal dashboard to see the saved bookmark
+
+## Update the Extension
+
+When updates are available:
+
+### Chrome Web Store Version
+- Extensions update automatically
+- You can manually check for updates at `chrome://extensions/`
+
+### Development Version
+1. Pull the latest changes from the repository
+2. Go to `chrome://extensions/`
+3. Click the refresh icon on the Minimal extension card
+
+## Troubleshooting
+
+### Extension Not Saving Bookmarks
+
+<AccordionGroup>
+  <Accordion title="Check Authentication">
+    Make sure you're logged in to Minimal. Open `https://minimal.so` (or your self-hosted URL) and verify you're signed in.
+  </Accordion>
+  
+  <Accordion title="Verify Server Configuration">
+    If you're self-hosting, ensure the `CHROME_EXTENSION_ID` environment variable is set correctly and the server has been restarted.
+  </Accordion>
+  
+  <Accordion title="Check Console Logs">
+    Right-click the extension icon, select "Inspect popup", and check the console for error messages.
+  </Accordion>
+  
+  <Accordion title="Check Service Worker Logs">
+    Go to `chrome://extensions/`, find the Minimal extension, and click "service worker" to view background script logs.
+  </Accordion>
+</AccordionGroup>
+
+### Auto-Capture Not Working
+
+If X/Twitter bookmark capture or browser bookmark sync isn't working:
+
+1. Verify the extension has the required permissions at `chrome://extensions/`
+2. Check service worker logs for error messages
+3. Ensure you're logged in to Minimal
+4. For X capture: Make sure you're bookmarking actual tweets (not profiles, lists, or search pages)

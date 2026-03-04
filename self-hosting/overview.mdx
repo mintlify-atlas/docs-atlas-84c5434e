@@ -1,0 +1,147 @@
+---
+title: Self-Hosting Overview
+description: Learn how to self-host Minimal on your own infrastructure
+---
+
+Minimal is a bookmark management application built with modern web technologies. This guide will help you deploy and run Minimal on your own infrastructure.
+
+## What is Minimal?
+
+Minimal is a self-hostable bookmark manager that allows you to organize and manage your bookmarks with a clean, minimalist interface. It includes features like:
+
+- Bookmark organization with groups
+- User authentication with email/password and OAuth
+- Public bookmark sharing
+- Chrome extension support
+- SQLite/Turso database support
+
+## Architecture Overview
+
+Minimal is built with the following technologies:
+
+- **Framework**: Next.js 16.1.1 (React 19.2.0)
+- **Database**: SQLite/Turso with Prisma ORM
+- **Authentication**: Better Auth
+- **Runtime**: Bun or Node.js
+- **Styling**: Tailwind CSS 4
+- **Storage**: Vercel Blob (optional for avatars)
+- **Email**: Autosend API (optional)
+
+## Key Features
+
+<Note>
+Minimal requires minimal dependencies and can run on a single server with SQLite, or scale to production with Turso (distributed SQLite).
+</Note>
+
+### Database Options
+
+- **Local SQLite**: Perfect for development and small deployments
+- **Turso**: Distributed SQLite for production deployments with better scalability
+
+### Authentication Methods
+
+- Email and password (built-in)
+- Google OAuth (optional)
+- Email verification
+- Password reset functionality
+
+## Prerequisites
+
+Before self-hosting Minimal, ensure you have:
+
+- **Runtime**: Bun 1.0+ or Node.js 20+
+- **Database**: SQLite support (local file or Turso account)
+- **Domain**: A domain name for production deployment (optional for local development)
+- **Email Service**: Autosend API key for transactional emails (optional)
+- **OAuth**: Google OAuth credentials (optional)
+
+## Quick Start
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/yourusername/minimal.git
+    cd minimal
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    bun install
+    # or
+    npm install
+    ```
+  </Step>
+
+  <Step title="Configure environment variables">
+    ```bash
+    cp .env.example .env
+    ```
+    
+    Edit `.env` and configure required variables. See [Configuration](/self-hosting/configuration) for details.
+  </Step>
+
+  <Step title="Set up the database">
+    ```bash
+    bun run db:generate
+    bun run db:push
+    ```
+  </Step>
+
+  <Step title="Start the development server">
+    ```bash
+    bun run dev
+    ```
+    
+    Visit `http://localhost:3000` in your browser.
+  </Step>
+</Steps>
+
+## Production Deployment
+
+For production deployments, you'll need to:
+
+1. Set up a production database (Turso recommended)
+2. Configure environment variables for production
+3. Set up OAuth providers (optional)
+4. Configure email service for transactional emails
+5. Build and deploy the application
+
+See the following pages for detailed instructions:
+
+- [Installation](/self-hosting/installation) - Detailed installation steps
+- [Configuration](/self-hosting/configuration) - Environment variables and settings
+- [Database Setup](/self-hosting/database) - SQLite and Turso configuration
+- [Authentication](/self-hosting/authentication) - Better Auth configuration
+
+## System Requirements
+
+### Minimum Requirements
+
+- **CPU**: 1 core
+- **RAM**: 512 MB
+- **Storage**: 1 GB (for application and database)
+- **Network**: Internet connection for OAuth and email services
+
+### Recommended for Production
+
+- **CPU**: 2+ cores
+- **RAM**: 2 GB+
+- **Storage**: 10 GB+
+- **Network**: Stable internet connection with SSL/TLS certificate
+
+<Warning>
+For production deployments, always use HTTPS and set `BETTER_AUTH_SECRET` to a secure random string.
+</Warning>
+
+## Support and Community
+
+If you encounter issues or have questions:
+
+- Check the documentation pages for detailed configuration guides
+- Review the source code for implementation details
+- Open an issue on GitHub for bugs or feature requests
+
+## Next Steps
+
+Continue with the [Installation Guide](/self-hosting/installation) to get started with deploying Minimal.

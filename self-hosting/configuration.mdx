@@ -1,0 +1,358 @@
+---
+title: Configuration
+description: Complete guide to environment variables and configuration options
+---
+
+Minimal uses environment variables for configuration. This guide covers all available configuration options and their usage.
+
+## Environment Variables
+
+All configuration is done through environment variables in a `.env` file at the root of your project.
+
+### Quick Setup
+
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your configuration values.
+
+## Core Configuration
+
+### Database
+
+<Note>
+You must configure either `DATABASE_URL` (for local SQLite) or both `TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` (for Turso).
+</Note>
+
+#### `DATABASE_URL`
+
+- **Required**: Yes (if not using Turso)
+- **Default**: `file:./dev.db`
+- **Description**: SQLite database connection URL
+- **Example**: `file:./dev.db`
+
+```bash .env
+DATABASE_URL="file:./dev.db"
+```
+
+Use this for local development or single-server deployments with SQLite.
+
+#### `LOCAL_DATABASE_URL`
+
+- **Required**: No
+- **Default**: `file:./dev.db`
+- **Description**: Local database URL for development
+- **Example**: `file:./dev.db`
+
+```bash .env
+LOCAL_DATABASE_URL="file:./dev.db"
+```
+
+#### `TURSO_DATABASE_URL`
+
+- **Required**: Yes (for production with Turso)
+- **Default**: None
+- **Description**: Turso database connection URL
+- **Example**: `libsql://your-db.turso.io`
+
+```bash .env
+TURSO_DATABASE_URL="libsql://minimal-production.turso.io"
+```
+
+#### `TURSO_AUTH_TOKEN`
+
+- **Required**: Yes (for production with Turso)
+- **Default**: None
+- **Description**: Turso authentication token
+- **Example**: `eyJhbGc...`
+
+```bash .env
+TURSO_AUTH_TOKEN="eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9..."
+```
+
+See [Database Setup](/self-hosting/database) for detailed Turso configuration.
+
+### Authentication
+
+#### `BETTER_AUTH_SECRET`
+
+- **Required**: Yes
+- **Default**: None
+- **Description**: Secret key for session signing and encryption
+- **Example**: `your-secret-key-here`
+
+<Warning>
+Always use a strong, randomly generated secret in production. Never commit this to version control.
+</Warning>
+
+Generate a secure secret:
+
+```bash
+openssl rand -base64 32
+```
+
+Example:
+
+```bash .env
+BETTER_AUTH_SECRET="fK8xL2mN9pQ3rS5tU7vW1yZ4aB6cD8eF0gH2iJ4kL6mN8pQ0rS2tU4vW6yZ8aB0c"
+```
+
+### Application URL
+
+#### `NEXT_PUBLIC_APP_URL`
+
+- **Required**: Yes
+- **Default**: `https://minimal.so`
+- **Description**: Public URL where your application is hosted
+- **Example**: `https://bookmarks.example.com`
+
+```bash .env
+NEXT_PUBLIC_APP_URL="https://bookmarks.example.com"
+```
+
+<Note>
+This URL is used for OAuth callbacks, email links, and CORS configuration. Must include protocol (http/https).
+</Note>
+
+For local development:
+
+```bash .env
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+## Optional Configuration
+
+### OAuth Providers
+
+#### Google OAuth
+
+Enable Google sign-in by configuring both variables:
+
+#### `GOOGLE_CLIENT_ID`
+
+- **Required**: No (Yes if using Google OAuth)
+- **Default**: None
+- **Description**: Google OAuth client ID
+- **Example**: `123456789-abc.apps.googleusercontent.com`
+
+#### `GOOGLE_CLIENT_SECRET`
+
+- **Required**: No (Yes if using Google OAuth)
+- **Default**: None
+- **Description**: Google OAuth client secret
+- **Example**: `GOCSPX-abc123...`
+
+```bash .env
+GOOGLE_CLIENT_ID="123456789-abc.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="GOCSPX-abc123def456ghi789"
+```
+
+<Note>
+Get Google OAuth credentials from the [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+</Note>
+
+See [Authentication Setup](/self-hosting/authentication) for detailed OAuth configuration.
+
+### Email Service
+
+#### `AUTOSEND_API_KEY`
+
+- **Required**: No (Yes if using email features)
+- **Default**: None
+- **Description**: Autosend API key for transactional emails
+- **Example**: `as_live_abc123...`
+
+```bash .env
+AUTOSEND_API_KEY="as_live_abc123def456ghi789"
+```
+
+Minimal sends emails for:
+- Welcome emails on signup
+- Email verification
+- Password reset
+
+<Warning>
+Without `AUTOSEND_API_KEY`, email features will be disabled. Users can still sign up, but won't receive verification emails.
+</Warning>
+
+### Admin Configuration
+
+#### `ADMIN_EMAIL`
+
+- **Required**: No
+- **Default**: None
+- **Description**: Admin email address for notifications
+- **Example**: `admin@example.com`
+
+```bash .env
+ADMIN_EMAIL="admin@example.com"
+```
+
+### Storage Configuration
+
+#### `BLOB_READ_WRITE_TOKEN`
+
+- **Required**: No (Yes if using Vercel Blob)
+- **Default**: None
+- **Description**: Vercel Blob storage token for file uploads
+- **Example**: `vercel_blob_...`
+
+#### `AVATAR_STORAGE`
+
+- **Required**: No
+- **Default**: None
+- **Description**: Avatar storage configuration
+- **Example**: `blob` or `local`
+
+```bash .env
+BLOB_READ_WRITE_TOKEN="vercel_blob_rw_abc123..."
+AVATAR_STORAGE="blob"
+```
+
+<Note>
+If not configured, Minimal will use default avatar placeholders.
+</Note>
+
+### Chrome Extension
+
+#### `CHROME_EXTENSION_ID`
+
+- **Required**: No (Yes if using Chrome extension)
+- **Default**: None
+- **Description**: Chrome extension ID for CORS configuration
+- **Example**: `abcdefghijklmnopqrstuvwxyz123456`
+
+#### `NEXT_PUBLIC_CHROME_EXTENSION_ID`
+
+- **Required**: No (Yes if using Chrome extension)
+- **Default**: None
+- **Description**: Public Chrome extension ID for client-side access
+- **Example**: `abcdefghijklmnopqrstuvwxyz123456`
+
+```bash .env
+CHROME_EXTENSION_ID="abcdefghijklmnopqrstuvwxyz123456"
+NEXT_PUBLIC_CHROME_EXTENSION_ID="abcdefghijklmnopqrstuvwxyz123456"
+```
+
+## Configuration Examples
+
+### Minimal Local Development
+
+```bash .env
+DATABASE_URL="file:./dev.db"
+BETTER_AUTH_SECRET="$(openssl rand -base64 32)"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
+### Production with Turso
+
+```bash .env
+TURSO_DATABASE_URL="libsql://minimal-production.turso.io"
+TURSO_AUTH_TOKEN="eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9..."
+BETTER_AUTH_SECRET="fK8xL2mN9pQ3rS5tU7vW1yZ4aB6cD8eF0gH2iJ4kL6mN8pQ0rS2tU4vW6yZ8aB0c"
+NEXT_PUBLIC_APP_URL="https://bookmarks.example.com"
+```
+
+### Full Production Configuration
+
+```bash .env
+# Database
+TURSO_DATABASE_URL="libsql://minimal-production.turso.io"
+TURSO_AUTH_TOKEN="eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9..."
+
+# Authentication
+BETTER_AUTH_SECRET="fK8xL2mN9pQ3rS5tU7vW1yZ4aB6cD8eF0gH2iJ4kL6mN8pQ0rS2tU4vW6yZ8aB0c"
+
+# OAuth
+GOOGLE_CLIENT_ID="123456789-abc.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="GOCSPX-abc123def456ghi789"
+
+# Application
+NEXT_PUBLIC_APP_URL="https://bookmarks.example.com"
+
+# Email
+AUTOSEND_API_KEY="as_live_abc123def456ghi789"
+ADMIN_EMAIL="admin@example.com"
+
+# Storage
+BLOB_READ_WRITE_TOKEN="vercel_blob_rw_abc123..."
+AVATAR_STORAGE="blob"
+
+# Chrome Extension
+CHROME_EXTENSION_ID="abcdefghijklmnopqrstuvwxyz123456"
+NEXT_PUBLIC_CHROME_EXTENSION_ID="abcdefghijklmnopqrstuvwxyz123456"
+```
+
+## Environment-Specific Configuration
+
+### Development vs Production
+
+Minimal automatically detects the environment based on `NODE_ENV`:
+
+- **Development**: `NODE_ENV=development` (default with `bun run dev`)
+- **Production**: `NODE_ENV=production` (set with `bun run build`)
+
+### Platform-Specific Variables
+
+Some platforms set additional variables:
+
+#### Vercel
+
+```bash
+VERCEL=1
+VERCEL_ENV=production
+VERCEL_URL=your-app.vercel.app
+```
+
+## Validation
+
+Minimal validates configuration on startup. If required variables are missing, you'll see error messages:
+
+```
+Error: No database URL configured for production
+```
+
+```
+Error: BETTER_AUTH_SECRET is required
+```
+
+## Security Best Practices
+
+<Warning>
+Follow these security practices for production deployments:
+</Warning>
+
+1. **Never commit `.env` files**: Add `.env` to `.gitignore`
+2. **Use strong secrets**: Generate random secrets with `openssl rand -base64 32`
+3. **Rotate secrets**: Regularly rotate `BETTER_AUTH_SECRET` and API keys
+4. **Use HTTPS**: Always use `https://` URLs in production
+5. **Restrict CORS**: Only add necessary extension IDs to `CHROME_EXTENSION_ID`
+6. **Environment separation**: Use different secrets for development and production
+
+## Troubleshooting
+
+### Variable Not Loading
+
+1. Check `.env` file location (must be at project root)
+2. Restart development server after changes
+3. Verify no typos in variable names
+4. Check for quotes around values
+
+### OAuth Not Working
+
+1. Verify `NEXT_PUBLIC_APP_URL` matches OAuth redirect URI
+2. Check both `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` are set
+3. Ensure OAuth consent screen is configured in Google Cloud Console
+
+### Email Not Sending
+
+1. Verify `AUTOSEND_API_KEY` is valid
+2. Check Autosend account has credits
+3. Review application logs for email errors
+
+## Next Steps
+
+- [Database Setup](/self-hosting/database) - Configure SQLite or Turso
+- [Authentication](/self-hosting/authentication) - Set up OAuth and email auth
+- [Installation](/self-hosting/installation) - Complete installation guide

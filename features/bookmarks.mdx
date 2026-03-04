@@ -1,0 +1,151 @@
+---
+title: Bookmark Management
+description: Learn how to create, organize, and manage your bookmarks in Minimal
+---
+
+Minimal supports three types of bookmarks that help you save different kinds of information. Each bookmark type is optimized for its specific use case.
+
+## Bookmark Types
+
+### Links
+
+Save web URLs with automatic metadata fetching. When you add a link, Minimal automatically:
+- Fetches the page title
+- Downloads the favicon
+- Normalizes the URL format
+
+Simply paste a URL into the input field and press Enter. The bookmark will be created with the page's metadata.
+
+### Colors
+
+Store color values for quick reference. Minimal automatically detects color formats including:
+- Hex codes (`#3E63DD`)
+- RGB values
+- Named colors
+
+When you paste a color value, it displays as a colored square for easy visual identification.
+
+### Text
+
+Save plain text snippets. Useful for:
+- Quick notes
+- Code snippets
+- Any text you want to reference later
+
+If your input isn't a URL or color, it's automatically saved as a text bookmark.
+
+## Creating Bookmarks
+
+There are multiple ways to add bookmarks:
+
+1. **Main Input**: Type or paste into the search/input field at the top
+2. **Auto-detection**: Minimal automatically determines the bookmark type
+3. **Duplicate Handling**: Adding the same URL twice updates the existing bookmark instead of creating a duplicate
+
+<Note>
+When you add a duplicate URL, Minimal refreshes the metadata (title and favicon) automatically.
+</Note>
+
+## Managing Bookmarks
+
+### Viewing Bookmarks
+
+Bookmarks are displayed in a list view with:
+- **Title**: The bookmark name or page title
+- **Icon**: Favicon for links, color swatch for colors, or text indicator
+- **Domain**: For link bookmarks, shows the hostname
+- **Created Date**: When the bookmark was added
+- **Public Indicator**: Globe icon for public bookmarks (when username is set)
+
+### Editing Bookmarks
+
+Rename any bookmark:
+1. Right-click the bookmark and select "Rename"
+2. Or use the keyboard shortcut `⌘E` when hovering
+3. Edit the title inline
+4. Press `Enter` to save or `Escape` to cancel
+
+### Deleting Bookmarks
+
+Remove bookmarks you no longer need:
+1. Right-click and select "Delete"
+2. Or use `⌘⌫` (Cmd+Delete) when hovering
+3. For bulk deletion, use selection mode
+
+### Refreshing Metadata
+
+For link bookmarks, you can refresh the title and favicon:
+1. Right-click the bookmark
+2. Select "Refetch"
+3. Minimal will fetch the latest metadata from the URL
+
+## Moving Bookmarks
+
+Move bookmarks between groups:
+
+1. Right-click a bookmark
+2. Select "Move To..." to see available groups
+3. Choose the destination group
+
+<Note>
+When you move a bookmark, its public/private visibility setting is reset to inherit from the new group.
+</Note>
+
+## Bulk Operations
+
+### Selection Mode
+
+Select multiple bookmarks for batch operations:
+
+1. Right-click any bookmark and select "Select Multiple"
+2. Click bookmarks to toggle selection (checkboxes appear)
+3. Use `Space` to toggle selection for the focused bookmark
+4. Use `⌘A` to select all bookmarks
+
+Available bulk actions:
+- **Move**: Move all selected bookmarks to another group
+- **Delete**: Remove all selected bookmarks
+- **Copy URLs**: Copy all bookmark URLs to clipboard
+- **Export**: Export selected bookmarks as CSV or JSON
+- **Make Public/Private**: Change visibility for all selected bookmarks
+
+### Exiting Selection Mode
+
+Press `Escape` to exit selection mode and clear all selections.
+
+## Context Menu
+
+Right-click any bookmark to access:
+
+- **Copy** (`⌘C`) - Copy the URL, color, or text to clipboard
+- **Rename** (`⌘E`) - Edit the bookmark title
+- **Delete** (`⌘⌫`) - Remove the bookmark
+- **Refetch** - Update metadata for link bookmarks
+- **Make Public/Private** - Toggle visibility (when username is set)
+- **Move To...** - Move to another group
+- **Select Multiple** - Enter selection mode
+
+## Automatic Features
+
+### URL Normalization
+
+All URLs are automatically normalized for consistency:
+- Protocol standardization (http/https)
+- Trailing slash handling
+- Query parameter ordering
+
+### Metadata Caching
+
+Page metadata (title, favicon) is cached to improve performance:
+- Initial fetch happens when you add the bookmark
+- Use "Refetch" to update cached metadata
+- Favicon images are stored for offline viewing
+
+### Smart Copying
+
+When you click a bookmark:
+- **Links**: Opens in a new tab
+- **Colors**: Copies the color value to clipboard
+- **Text**: Copies the text to clipboard
+
+A "Copied" indicator appears briefly to confirm the action.

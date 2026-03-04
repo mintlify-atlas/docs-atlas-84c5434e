@@ -1,0 +1,187 @@
+---
+title: Search Functionality
+description: Find bookmarks quickly with real-time search
+---
+
+Minimal includes a powerful search feature that helps you find bookmarks instantly as you type.
+
+## How Search Works
+
+The search field at the top of the dashboard serves dual purposes:
+1. **Adding bookmarks**: Type and press Enter to create a new bookmark
+2. **Searching bookmarks**: Type to filter the current group's bookmarks
+
+### Search Behavior
+
+As you type in the search field:
+- Results update in real-time
+- Search is debounced by 500ms for better performance
+- Only bookmarks in the current group are searched
+- Empty search shows all bookmarks
+
+## What Gets Searched
+
+Search looks through:
+- **Bookmark titles**: The display name of the bookmark
+- **URLs**: The full URL for link bookmarks
+
+Both fields are searched case-insensitively, so `GITHUB` matches `github.com`.
+
+### Search Implementation
+
+```typescript
+const filteredBookmarks = bookmarks.filter((b) => {
+  if (!searchQuery) return true;
+  return (
+    b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    b.url?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+});
+```
+
+## Using Search
+
+### Basic Search
+
+1. Click the input field at the top (or start typing)
+2. Type your search query
+3. Results appear automatically
+4. Clear the field to show all bookmarks
+
+<Note>
+Search is scoped to the currently selected group. Switch groups to search different collections.
+</Note>
+
+### Search Examples
+
+- `github` - Finds all bookmarks with "github" in title or URL
+- `#3E63DD` - Finds color bookmarks with that hex value
+- `react` - Matches "React Documentation", "learn-react.com", etc.
+- `api` - Finds bookmarks with "api" anywhere in title or URL
+
+## Search Performance
+
+### Debouncing
+
+Search uses a 500ms debounce to improve performance:
+- Prevents excessive filtering while typing
+- Reduces unnecessary re-renders
+- Analytics only fires after debounce completes
+
+```typescript
+const debouncedSearchQuery = useDebounce(searchQuery, 500);
+```
+
+### Analytics
+
+When you perform a search, it's tracked for product insights:
+
+```typescript
+if (debouncedSearchQuery) {
+  posthog.capture("bookmark_searched");
+}
+```
+
+## Keyboard Navigation with Search
+
+When search results are displayed:
+- Use `↓` and `↑` arrows to navigate filtered results
+- Press `Enter` to open the selected bookmark
+- Press `⌘C` to copy the selected bookmark
+- All keyboard shortcuts work with filtered results
+
+### Selected Index Reset
+
+When you type in the search field:
+- The selected index is reset to -1
+- This prevents confusion when the list changes
+- Arrow keys start from the top of the filtered results
+
+```typescript
+const handleSearchChange = (value: string) => {
+  setSearchQuery(value);
+  setSelectedIndex(-1);
+};
+```
+
+## Search Limitations
+
+### Single Group Scope
+
+Search only works within the current group:
+- It does **not** search across all groups
+- Switch groups to search different collections
+- This keeps search fast and results relevant
+
+### No Advanced Operators
+
+Current search is simple substring matching:
+- No boolean operators (AND, OR, NOT)
+- No regex support
+- No fuzzy matching
+- No search modifiers
+
+## Clearing Search
+
+Clear your search query:
+- Click the X button in the input field (if visible)
+- Select all text and delete
+- Press `Escape` (if implemented)
+
+When you submit a bookmark (press Enter), search is automatically cleared:
+
+```typescript
+const handleAddBookmark = (value: string) => {
+  // ... create bookmark logic
+  setSearchQuery("");
+  setSelectedIndex(-1);
+};
+```
+
+## Empty States
+
+### No Results
+
+If your search returns no results:
+- The bookmark list appears empty
+- No "no results" message is shown
+- Clear the search to see all bookmarks again
+
+### Empty Group
+
+If the group has no bookmarks:
+
+```
+  🔖
+  No bookmarks here
+  Add some cool links to get started
+```
+
+## Tips for Better Search
+
+<CardGroup cols={2}>
+  <Card title="Search by Domain" icon="globe">
+    Type just the domain name to find all bookmarks from that site (e.g., "github")
+  </Card>
+  
+  <Card title="Search Colors" icon="palette">
+    Search for hex codes or color names to find color bookmarks
+  </Card>
+  
+  <Card title="Partial Matches" icon="magnifying-glass">
+    You only need to type part of the title or URL - "doc" matches "documentation"
+  </Card>
+  
+  <Card title="Clear to Reset" icon="arrow-rotate-left">
+    Clear the search field to see all bookmarks in the current group
+  </Card>
+</CardGroup>
+
+## Future Enhancements
+
+Planned search improvements:
+- Cross-group search
+- Search history
+- Fuzzy matching
+- Tag-based filtering
+- Advanced search operators
